@@ -1,0 +1,76 @@
+/* Token warna & font diambil dari desain Figma (frame "Login Page") */
+:root {
+  --color-bg: #f6f5f1;
+  --color-surface: #f5f6f1;
+  --color-primary: #0b5e58;
+  --color-primary-dark: #083f3b;
+  --color-ink: #000;
+  --color-error: #b42318;
+  --font-serif: 'Source Serif 4 Variable', 'Source Serif 4', Georgia, serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-serif);
+  color: var(--color-ink);
+  background: var(--color-bg);
+}
+
+button,
+input {
+  font: inherit;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Gaya bersama halaman Keuangan */
+.page-title { font-size: 32px; font-weight: 600; margin: 8px 0 4px; }
+.page-sub { color: #55554f; margin: 0 0 24px; }
+.card { background: #fff; border: 1px solid #e3e2da; border-radius: 14px; padding: 20px 24px; }
+.grid { display: grid; gap: 16px; }
+.tbl { width: 100%; border-collapse: collapse; font-size: 16px; }
+.tbl th { text-align: left; font-weight: 600; padding: 12px 14px; background: #ecebe3; }
+.tbl td { padding: 12px 14px; border-top: 1px solid #ecebe3; }
+.tbl .num { text-align: right; }
+.btn { font: inherit; border: 0; border-radius: 10px; padding: 11px 20px; cursor: pointer; background: var(--color-primary); color: #fff; }
+.btn:hover { background: var(--color-primary-dark); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn--ghost { background: #fff; color: var(--color-primary); border: 1px solid var(--color-primary); }
+.btn--ghost:hover { background: #eef5f4; }
+.input { font: inherit; padding: 10px 14px; border: 1px solid #c9c9c2; border-radius: 10px; background: #fff; }
+.scroll-x { overflow-x: auto; }
+
+/* Kartu statistik dan pemilih periode (role Dosen) */
+.stat { background: #f2f5f9; border: 1px solid #000; border-radius: 14px; padding: 18px 22px; }
+.stat__lbl { color: #55554f; }
+.stat__val { font-size: 30px; font-weight: 700; margin: 4px 0; }
+.stat__sub { color: #55554f; font-size: 14px; }
+.panel { background: #f2f5f9; border: 1px solid #000; border-radius: 14px; padding: 20px 24px; }
+.panel h2 { font-size: 18px; margin: 0 0 8px; }
+.tbl--line th { background: none; border-bottom: 2px solid #000; padding-left: 6px; }
+.tbl--line td { border-top: 0; border-bottom: 1px solid #c9c9c2; padding-left: 6px; }
+.field-sel { display: grid; gap: 6px; }
+.field-sel select { font: inherit; padding: 10px 14px; border: 0; border-radius: 4px; background: #d9d9d9; min-width: 250px; }
+.badge-ok { background: #8dfcb3; color: #0a5928; border-radius: 7px; padding: 4px 12px; font-size: 14px; }
