@@ -1,0 +1,35 @@
+# Operating systems
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.Trash-*
+.nfs*
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Editors and IDEs
+.idea/
+.vscode/
+.fleet/
+.project
+.classpath
+.settings/
+.buildpath
+.metadata/
+nbproject/private/
+*.sublime-workspace
+*.code-workspace
+*.swp
+*.swo
+*~
+.#*
+#*#

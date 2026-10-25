@@ -1,0 +1,5 @@
+creation_rules:
+  - path_regex: '(\.env.*|.*\.ya?ml|\.ovpn)$'
+    age:
+      - 'age10wyyzvxe6n742jlwwvxw800nlq9dlwxdm6ugnkguka46ljywc46qzkefwj' #nca
+      - 'age10xzsjhqd5uj9kpquqpecfwse429gs6nfus68jjej3hauql3u4srql673hy' #hikki
