@@ -74,3 +74,45 @@ input {
 .field-sel { display: grid; gap: 6px; }
 .field-sel select { font: inherit; padding: 10px 14px; border: 0; border-radius: 4px; background: #d9d9d9; min-width: 250px; }
 .badge-ok { background: #8dfcb3; color: #0a5928; border-radius: 7px; padding: 4px 12px; font-size: 14px; }
+
+
+/* ---------- Animasi perpindahan halaman ---------- */
+.page-enter-active { transition: opacity .28s ease, transform .28s ease; }
+.page-leave-active { transition: opacity .14s ease, transform .14s ease; }
+.page-enter-from { opacity: 0; transform: translateY(14px); }
+.page-leave-to { opacity: 0; transform: translateY(-6px); }
+
+.fade-enter-active, .fade-leave-active { transition: opacity .25s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
+
+/* Isi halaman muncul berurutan */
+.page > * { animation: rise .5s cubic-bezier(.2, .7, .2, 1) both; }
+.page > :nth-child(1) { animation-delay: .02s; }
+.page > :nth-child(2) { animation-delay: .07s; }
+.page > :nth-child(3) { animation-delay: .12s; }
+.page > :nth-child(4) { animation-delay: .17s; }
+.page > :nth-child(5) { animation-delay: .22s; }
+.page > :nth-child(n+6) { animation-delay: .27s; }
+@keyframes rise { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+@keyframes grow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+
+/* Hover halus pada tombol dan baris tabel */
+.btn { transition: background-color .18s ease, transform .18s ease, box-shadow .18s ease; }
+.btn:hover { transform: translateY(-1px); }
+.tbl tbody tr { transition: background-color .15s ease; }
+
+@media (prefers-reduced-motion: reduce) {
+  .page > *, .page-enter-active, .page-leave-active, .fade-enter-active, .fade-leave-active { animation: none !important; transition: none !important; }
+  .page-enter-from, .page-leave-to, .fade-enter-from, .fade-leave-to { opacity: 1; transform: none; }
+}
+
+/* ---------- Admin Super ---------- */
+.tag { display: inline-block; border-radius: 6px; padding: 3px 10px; font-size: 13px; background: #dbe7fb; color: #1d4ed8; }
+.tag--gray { background: #d6d8dc; color: #333; }
+.tag--off { background: #e3e2da; color: #55554f; }
+.tag--bad { background: #fbd5d0; color: #b42318; }
+.btn--sm { padding: 6px 14px; font-size: 14px; }
+.filters { display: flex; gap: 16px; flex-wrap: wrap; margin: 16px 0 20px; }
+.filters label { display: grid; gap: 4px; font-size: 14px; }
+.filters input, .filters select { font: inherit; font-size: 14px; padding: 8px 12px; border: 1px solid #c9c9c2; border-radius: 6px; background: #e4e4e4; min-width: 170px; }
+.filters input[type=search] { min-width: 220px; }

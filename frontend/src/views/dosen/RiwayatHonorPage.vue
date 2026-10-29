@@ -50,7 +50,7 @@ const tinggi = (b) => Math.round((b.bruto / maks) * 100)
           <tr v-for="b in baris" :key="b.periode">
             <td>{{ b.periode }}</td><td>{{ b.sksWajib }}</td><td>{{ b.terlaksana }}</td><td>{{ b.lebih }}</td>
             <td>{{ rupiah(b.bruto) }}</td><td>{{ rupiah(b.pajak) }}</td><td><strong>{{ rupiah(b.netto) }}</strong></td>
-            <td><RouterLink :to="`${base}/detail`" class="btn btn--ghost sm">Lihat Detail</RouterLink></td>
+            <td><RouterLink :to="{ path: `${base}/rincian`, query: { periode: b.periode } }" class="btn btn--ghost sm">Lihat Detail</RouterLink></td>
           </tr>
         </tbody>
       </table>
@@ -63,7 +63,7 @@ const tinggi = (b) => Math.round((b.bruto / maks) * 100)
 .chart { margin-bottom: 16px; }
 .bars { height: 260px; display: flex; align-items: flex-end; justify-content: center; gap: 28px; border-bottom: 1px solid #000; padding-top: 28px; }
 .col { height: 100%; width: 90px; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; position: relative; }
-.bar { width: 100%; background: #67d1c9; border-radius: 6px 6px 0 0; display: block; }
+.bar { transform-origin: bottom; animation: grow .7s .3s cubic-bezier(.2,.7,.2,1) both; width: 100%; background: #67d1c9; border-radius: 6px 6px 0 0; display: block; }
 .bar--last { background: #0d9488; }
 .amt { font-size: 13px; margin-bottom: 4px; white-space: nowrap; }
 .lbl { position: absolute; top: calc(100% + 8px); font-size: 13px; white-space: nowrap; }

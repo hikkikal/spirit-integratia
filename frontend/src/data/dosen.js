@@ -41,6 +41,9 @@ export const kelasPeriode = {
   ],
 }
 
+// Mock: Keuangan/Pimpinan memakai periode global, jadi contoh kelas yang sama dipakai juga untuk periode itu.
+kelasPeriode['Ganjil 2026/2027'] = kelasPeriode['Genap 2025/2026']
+
 // Rincian per minggu perkuliahan (skema tarif Perdir). Angka di mock-up identik tiap minggu
 // dan belum cocok dengan honor Rp1.040.000, jadi ini hanya contoh tampilan.
 const minggu = (n) => ({
@@ -55,6 +58,8 @@ const minggu = (n) => ({
 })
 export const mingguPeriode = {
   'Genap 2025/2026': [1, 2, 3, 4, 5, 6].map(minggu),
+  // Mock: Keuangan/Pimpinan memakai periode global, jadi contoh yang sama dipakai untuk periode ini.
+  'Ganjil 2026/2027': [1, 2, 3, 4, 5, 6].map(minggu),
 }
 
 // Peran yang dimiliki pengguna ini selain dosen (untuk menu Ganti Akun).

@@ -3,7 +3,7 @@ import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { setUser } from '../stores/auth.js'
 import BrandLogo from '../components/BrandLogo.vue'
-import illustration from '../assets/login-illustration.svg'
+import illustration from '../assets/login-illustration.png'
 import { AUTH_MODE, mockLogin, startSso } from '../services/auth.js'
 import { ROLES, homeFor } from '../lib/roles.js'
 
@@ -46,8 +46,6 @@ async function onSubmit() {
   <main class="login">
     <section class="hero" aria-label="Tentang Integratia">
       <div class="hero__content">
-        <!-- Posisi logo: di tengah, tepat di atas teks sambutan -->
-        <BrandLogo :size="96" />
         <p>Selamat Datang di Integratia</p>
         <p>Sistem Perhitungan SKS Dosen</p>
         <p>Politeknik Negeri Jakarta</p>
@@ -55,7 +53,7 @@ async function onSubmit() {
       <img class="hero__art" :src="illustration" alt="" />
     </section>
 
-    <section class="panel">
+    <section class="login__panel">
       <!-- Produksi: hanya tombol SSO. Password diketik di halaman CAS PNJ, bukan di aplikasi ini. -->
       <div v-if="isSso" class="form">
         <h1 class="sr-only">Masuk ke Integratia</h1>
@@ -140,14 +138,17 @@ async function onSubmit() {
   position: absolute;
   left: 25px;
   bottom: 12px;
-  height: min(36vh, 392px);
-  aspect-ratio: 376 / 392;
+  height: min(38vh, 396px);
+  aspect-ratio: 390 / 396;
   max-width: 70%;
   pointer-events: none;
 }
 
-/* ---------- Form kanan ---------- */
-.panel {
+/* ---------- Form kanan (polos: tanpa kartu/garis, menyatu dengan latar halaman) ---------- */
+.login__panel {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
   display: grid;
   place-items: center;
   padding: 48px 32px;

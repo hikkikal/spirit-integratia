@@ -4,8 +4,6 @@ import { useRoute, useRouter } from 'vue-router'
 import { auth, setUser } from '../stores/auth.js'
 import { logout } from '../services/auth.js'
 import { ROLES, MENUS } from '../lib/roles.js'
-import { honorState } from '../stores/honor.js'
-import { periodeOptions } from '../data/mock.js'
 import BrandLogo from '../components/BrandLogo.vue'
 import GantiAkunModal from '../components/GantiAkunModal.vue'
 
@@ -17,8 +15,6 @@ const base = ROLES[role]?.base ?? ''
 const menu = (MENUS[role] ?? []).map((m) => ({ ...m, to: `${base}/${m.to}` }))
 const aktif = (m) => String(route.name || '').includes(m.match)
 
-// Dosen memilih periode di dalam halamannya sendiri, jadi bilah periode global disembunyikan.
-const tampilPeriode = role !== 'dosen'
 const inisial = computed(() =>
   (auth.user?.name || '?').split(/\s+/).map((k) => k[0]).join('').slice(0, 2).toUpperCase(),
 )
@@ -55,7 +51,6 @@ async function keluar() {
   <div class="shell">
     <aside class="side">
       <div class="side__brand">
-        <BrandLogo :size="44" />
         <span class="side__name">Integratia</span>
       </div>
       <span class="chip">{{ ROLES[role]?.chip }}</span>
@@ -71,8 +66,8 @@ async function keluar() {
             <strong>{{ auth.user?.name }}</strong>
             <span>Role aktif: {{ ROLES[role]?.label }}</span>
           </div>
-          <RouterLink v-if="role === 'dosen'" :to="`${base}/profil`" class="popup__item" role="menuitem" @click="menuBuka = false">
-            Lihat Profil
+          <RouterLink :to="`${base}/profil`" class="popup__item" role="menuitem" @click="menuBuka = false">
+            Lihat Profile
           </RouterLink>
           <button class="popup__item" role="menuitem" @click="gantiAkun">Ganti Akun</button>
           <button class="popup__item popup__item--out" role="menuitem" @click="keluar">Log Out</button>
@@ -89,15 +84,13 @@ async function keluar() {
     </aside>
 
     <div class="main">
-      <header v-if="tampilPeriode" class="top">
-        <label class="periode">
-          <span class="sr-only">Periode</span>
-          <select v-model="honorState.periode">
-            <option v-for="p in periodeOptions" :key="p">{{ p }}</option>
-          </select>
-        </label>
-      </header>
-      <main class="content"><RouterView /></main>
+      <main class="content">
+        <RouterView v-slot="{ Component, route }">
+          <Transition name="page" mode="out-in">
+            <div :key="route.path" class="page"><component :is="Component" /></div>
+          </Transition>
+        </RouterView>
+      </main>
     </div>
 
     <GantiAkunModal v-if="modalBuka" @close="modalBuka = false" />
@@ -132,15 +125,13 @@ async function keluar() {
 .popup__item--out { color: #b42318; border-top: 1px solid #ccc; margin-top: 6px; padding-top: 12px; }
 
 .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.top { display: flex; justify-content: flex-end; padding: 20px 40px 0; }
-.periode select { font: inherit; font-size: 16px; padding: 10px 14px; border: 1px solid #c9c9c2; border-radius: 10px; background: #fff; }
-.content { padding: 16px 40px 48px; }
+.content { padding: 28px 40px 48px; }
 @media (max-width: 900px) {
   .shell { flex-direction: column; }
   .side { width: auto; height: auto; position: static; flex-direction: row; flex-wrap: wrap; align-items: center; }
   .side__nav { flex-direction: row; flex-wrap: wrap; margin: 0; }
   .side__user { margin: 0 0 0 auto; border: 0; padding: 0; min-width: 220px; }
   .popup { bottom: auto; top: 100%; }
-  .top, .content { padding-left: 16px; padding-right: 16px; }
+  .content { padding-left: 16px; padding-right: 16px; }
 }
 </style>

@@ -4,9 +4,11 @@ export const ROLES = {
   pimpinan: { label: 'Pimpinan', chip: 'PIMPINAN', base: '/pimpinan' },
   admin: { label: 'Admin Input', chip: 'ADMIN INPUT', base: '/admin' },
   dosen: { label: 'Dosen', chip: 'DOSEN', base: '/dosen' },
+  admin_super: { label: 'Admin Super', chip: 'Admin Super', base: '/admin-super' },
 }
 
-export const homeFor = (role) => (ROLES[role] ? `${ROLES[role].base}/dashboard` : '/login')
+const HOME = { admin_super: 'pengguna' }
+export const homeFor = (role) => (ROLES[role] ? `${ROLES[role].base}/${HOME[role] ?? 'dashboard'}` : '/login')
 
 // Menu sidebar per peran. TODO: samakan dengan desain Figma Admin Input dan Dosen.
 export const MENUS = {
@@ -14,14 +16,21 @@ export const MENUS = {
     { label: 'Dashboard', to: 'dashboard', match: 'dashboard' },
     { label: 'Data Dosen', to: 'data-honor', match: 'honor' },
     { label: 'Laporan & Ekspor', to: 'laporan', match: 'laporan' },
+    { label: 'Tarif & Ketentuan', to: 'tarif', match: 'tarif' },
   ],
   pimpinan: [
     { label: 'Dashboard', to: 'dashboard', match: 'dashboard' },
     { label: 'Data Dosen', to: 'data-honor', match: 'honor' },
+    { label: 'Laporan', to: 'laporan', match: 'laporan' },
+    { label: 'Tarif & Ketentuan', to: 'tarif', match: 'tarif' },
   ],
   admin: [
     { label: 'Dashboard', to: 'dashboard', match: 'dashboard' },
     { label: 'Data Dosen', to: 'data-honor', match: 'honor' },
+  ],
+  admin_super: [
+    { label: 'Kelola Pengguna', to: 'pengguna', match: 'pengguna' },
+    { label: 'Log Aktivitas', to: 'log', match: 'log' },
   ],
   dosen: [
     { label: 'Dashboard Saya', to: 'dashboard', match: 'dashboard' },

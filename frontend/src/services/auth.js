@@ -25,7 +25,8 @@ export async function mockLogin({ nip, role }) {
   if (!nip) throw new Error('NIP wajib diisi.')
   // Contoh pengguna ber-peran ganda: dosen yang juga pimpinan (untuk mencoba Ganti Akun).
   const roles = role === 'dosen' ? ['dosen', 'pimpinan'] : [role]
-  return { nip, name: role === 'dosen' ? 'Dosen B' : `Pengguna Demo (${role})`, role, roles }
+  const NAMA = { dosen: 'Dosen B', pimpinan: 'User Pimpinan', keuangan: 'User Keuangan', admin: 'Admin Input', admin_super: 'Super Admin' }
+  return { nip, name: NAMA[role] ?? 'Pengguna Demo', role, roles }
 }
 
 // Backend membalas { logout_url } (alamat logout CAS) supaya sesi SSO ikut berakhir.

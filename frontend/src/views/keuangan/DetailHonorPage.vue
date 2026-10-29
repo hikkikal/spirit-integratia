@@ -2,17 +2,18 @@
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { honorState, tandaiTerverifikasi } from '../../stores/honor.js'
-import { detailKelas } from '../../data/mock.js'
+import { detailKelas, TARIF_KERJA_SAMA } from '../../data/mock.js'
 import { hitungBaris } from '../../lib/honor.js'
 import { rupiah } from '../../lib/format.js'
 import { useBase } from '../../lib/useBase.js'
 import { auth } from '../../stores/auth.js'
 import StatusBadge from '../../components/StatusBadge.vue'
 
-const props = defineProps({ id: String, backTo: String })
+// backTo: alamat halaman yang membuka detail ini (Kembali selalu ke sana).
+// tampilKerjaSama: role Dosen menampilkan kartu Tarif Kerja Sama (mengikuti Figma).
+const props = defineProps({ id: String, backTo: String, periode: String, tampilKerjaSama: Boolean })
 const router = useRouter()
 const base = useBase()
-const backTo = props.backTo
 // Hanya Bidang Keuangan yang boleh memverifikasi. Backend tetap harus memeriksa ulang.
 const bisaVerifikasi = computed(() => auth.user?.role === 'keuangan')
 
@@ -22,80 +23,78 @@ const detail = computed(() => detailKelas[props.id])
 const baris = computed(() =>
   (detail.value?.kelas ?? []).map((k) => ({ ...k, ...hitungBaris(k, detail.value.tarifReguler) })),
 )
+const jumlah = (f) => baris.value.reduce((a, k) => a + k[f], 0)
 const total = computed(() => ({
-  wajib: baris.value.reduce((a, k) => a + k.wajib, 0),
-  lebih100: baris.value.reduce((a, k) => a + k.lebih100, 0),
-  lebih50: baris.value.reduce((a, k) => a + k.lebih50, 0),
-  lebih0: baris.value.reduce((a, k) => a + k.lebih0, 0),
-  subtotal: baris.value.reduce((a, k) => a + k.subtotal, 0),
-  pajak: baris.value.reduce((a, k) => a + k.pajak, 0),
-  honor: baris.value.reduce((a, k) => a + k.honor, 0),
+  wajib: jumlah('wajib'), lebih100: jumlah('lebih100'), lebih50: jumlah('lebih50'), lebih0: jumlah('lebih0'),
+  subtotal: jumlah('subtotal'), pajak: jumlah('pajak'), honor: jumlah('honor'),
 }))
+function kembali() {
+  router.push(props.backTo || `${base}/data-honor/${props.id}`)
+}
 </script>
 
 <template>
-  <button class="btn btn--ghost back" @click="router.push(backTo || `${base}/data-honor`)">← Kembali</button>
-
-  <p v-if="!dosen" class="card">Dosen tidak ditemukan.</p>
+  <p v-if="!dosen" class="panel">Dosen tidak ditemukan.</p>
   <template v-else>
-    <h1 class="page-title">Detail Honor Dosen</h1>
-    <p class="page-sub">{{ dosen.nama }} · {{ dosen.jabatan }} · {{ dosen.jurusan }} · {{ honorState.periode }}</p>
+    <h1 class="title">Detail honor:<br />{{ dosen.nama }}</h1>
+    <button class="kembali" @click="kembali">◂ Kembali</button>
 
-    <section class="grid cards">
-      <div class="card"><div class="lbl">SKS wajib</div><div class="val">{{ dosen.sksWajib }}</div></div>
-      <div class="card"><div class="lbl">SKS lebih</div><div class="val">{{ dosen.sksLebih }}</div></div>
-      <div class="card"><div class="lbl">Total honor</div><div class="val">{{ rupiah(dosen.honor) }}</div></div>
-      <div class="card"><div class="lbl">Status</div><div class="val"><StatusBadge :status="dosen.status" /></div></div>
+    <section class="cards">
+      <div class="kartu"><span>Jabatan</span><strong>{{ dosen.jabatan }} ({{ dosen.golongan }})</strong></div>
+      <div class="kartu"><span>SKS wajib</span><strong>{{ dosen.sksWajib }}</strong></div>
+      <div class="kartu"><span>SKS lebih</span><strong>{{ dosen.sksLebih }}</strong></div>
+      <div class="kartu"><span>Tarif Reguler</span><strong>{{ rupiah(detail?.tarifReguler ?? 130000) }} / SKS</strong></div>
+      <div v-if="tampilKerjaSama" class="kartu"><span>Tarif Kerja Sama</span><strong>{{ rupiah(TARIF_KERJA_SAMA) }} / SKS</strong></div>
+      <div class="kartu"><span>Status</span><StatusBadge :status="dosen.status" /></div>
+      <button v-if="bisaVerifikasi" class="btn verif" :disabled="dosen.status === 'terverifikasi'" @click="tandaiTerverifikasi(dosen.id)">
+        {{ dosen.status === 'terverifikasi' ? 'Sudah terverifikasi' : 'Tandai terverifikasi' }}
+      </button>
     </section>
 
-    <section class="card">
-      <h2>Rincian kelas</h2>
+    <section class="panel tabel">
       <p v-if="!detail" class="kosong">Rincian kelas dosen ini belum tersedia (menunggu data dari SISTER).</p>
       <div v-else class="scroll-x">
-        <table class="tbl">
+        <table class="tbl tbl--line">
           <thead>
             <tr>
-              <th>Mata kuliah / kelas</th><th>Jenis kelas</th><th class="num">SKS wajib</th>
-              <th class="num">SKS lebih (100%)</th><th class="num">SKS lebih (50%)</th><th class="num">SKS lebih (0%)</th>
-              <th class="num">Subtotal</th><th class="num">Pajak</th><th class="num">Honor</th>
+              <th class="c">No</th><th>Kelas</th><th>Jenis kelas</th>
+              <th class="c">SKS wajib<br />(100%)</th><th class="c">SKS lebih<br />(100%)</th><th class="c">SKS lebih<br />(50%)</th><th class="c">SKS lebih<br />(0%)</th>
+              <th class="c">Subtotal<br />honor bruto</th><th class="c">Pajak</th><th class="c">Honor</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="k in baris" :key="k.mk">
-              <td>{{ k.mk }}</td><td>{{ k.jenis }}</td><td class="num">{{ k.wajib }}</td>
-              <td class="num">{{ k.lebih100 }}</td><td class="num">{{ k.lebih50 }}</td><td class="num">{{ k.lebih0 }}</td>
-              <td class="num">{{ rupiah(k.subtotal) }}</td><td class="num">{{ rupiah(k.pajak) }}</td><td class="num">{{ rupiah(k.honor) }}</td>
+            <tr v-for="(k, i) in baris" :key="k.mk">
+              <td class="c">{{ i + 1 }}</td><td>{{ k.mk }}</td><td>{{ k.jenis }}</td>
+              <td class="c">{{ k.wajib }}</td><td class="c">{{ k.lebih100 }}</td><td class="c">{{ k.lebih50 }}</td><td class="c">{{ k.lebih0 }}</td>
+              <td class="c">{{ rupiah(k.subtotal) }}</td><td class="c">{{ rupiah(k.pajak) }}</td><td class="c">{{ rupiah(k.honor) }}</td>
             </tr>
           </tbody>
           <tfoot>
             <tr>
-              <th colspan="2">Total</th><th class="num">{{ total.wajib }}</th>
-              <th class="num">{{ total.lebih100 }}</th><th class="num">{{ total.lebih50 }}</th><th class="num">{{ total.lebih0 }}</th>
-              <th class="num">{{ rupiah(total.subtotal) }}</th><th class="num">{{ rupiah(total.pajak) }}</th><th class="num">{{ rupiah(total.honor) }}</th>
+              <td></td><td colspan="2">Total</td>
+              <td class="c">{{ total.wajib }}</td><td class="c">{{ total.lebih100 }}</td><td class="c">{{ total.lebih50 }}</td><td class="c">{{ total.lebih0 }}</td>
+              <td class="c">{{ rupiah(total.subtotal) }}</td><td class="c">{{ rupiah(total.pajak) }}</td><td class="c">{{ rupiah(total.honor) }}</td>
             </tr>
           </tfoot>
         </table>
       </div>
-      <p v-if="detail" class="note">Tarif reguler {{ rupiah(detail.tarifReguler) }}/SKS · pajak 5% (sementara, belum dikonfirmasi).</p>
     </section>
-
-    <div v-if="bisaVerifikasi" class="actions">
-      <button class="btn" :disabled="dosen.status === 'terverifikasi'" @click="tandaiTerverifikasi(dosen.id)">
-        {{ dosen.status === 'terverifikasi' ? 'Sudah terverifikasi' : 'Tandai terverifikasi' }}
-      </button>
-    </div>
+    <p v-if="detail" class="note">Periode {{ periode || honorState.periode }} · pajak 5% (sementara, belum dikonfirmasi).</p>
   </template>
 </template>
 
 <style scoped>
-.back { margin-bottom: 8px; }
-.cards { grid-template-columns: repeat(4, 1fr); margin-bottom: 16px; }
-.lbl { color: #55554f; }
-.val { font-size: 26px; font-weight: 600; margin-top: 6px; color: var(--color-primary-dark); }
-h2 { font-size: 20px; margin: 0 0 12px; }
-.note { font-size: 14px; color: #77776f; }
+.title { font-size: 28px; font-weight: 500; margin: 0 0 12px; line-height: 1.2; }
+.kembali { background: #ffee00; border: 1px solid #000; border-radius: 8px; padding: 6px 12px; font: inherit; cursor: pointer; margin-bottom: 20px; }
+.cards { display: flex; gap: 26px; flex-wrap: wrap; align-items: stretch; margin-bottom: 20px; }
+.kartu { background: #f2f5f9; border: 1px solid #000; border-radius: 8px; padding: 10px 12px; display: grid; gap: 4px; align-content: center; font-family: system-ui, sans-serif; font-size: 14px; min-height: 62px; }
+.kartu strong { font-size: 14px; }
+.verif { margin-left: auto; align-self: center; }
+.tabel { padding: 10px 14px; }
+.tbl :is(th, td) { font-size: 14px; padding: 12px 10px; }
+.tbl .c { text-align: center; }
+.tbl tfoot td { border-bottom: 0; border-top: 2px solid #000; padding-top: 14px; }
+.tbl tbody td { height: 58px; }
 .kosong { color: #77776f; }
-.actions { margin-top: 16px; }
-.tbl tfoot th { background: #ecebe3; }
-@media (max-width: 900px) { .cards { grid-template-columns: repeat(2, 1fr); } }
+.note { font-size: 14px; color: #77776f; }
 </style>
