@@ -15,7 +15,16 @@ export class ApiError extends Error {
   }
 }
 
+// Sanctum SPA: sebelum permintaan tulis pertama, minta cookie XSRF-TOKEN sekali.
+let csrfSiap = false
+async function pastikanCsrf() {
+  if (csrfSiap) return
+  await fetch(`${API_URL}/sanctum/csrf-cookie`, { credentials: 'include' })
+  csrfSiap = true
+}
+
 export async function api(path, { method = 'GET', body, query } = {}) {
+  if (method !== 'GET') await pastikanCsrf()
   const qs = query ? '?' + new URLSearchParams(Object.entries(query).filter(([, v]) => v !== '' && v != null)) : ''
   const res = await fetch(`${API_URL}/api${path}${qs}`, {
     method,

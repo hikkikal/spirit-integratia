@@ -1,12 +1,11 @@
 <script setup>
 import { honorState } from '../stores/honor.js'
-import { periodeOptions } from '../data/mock.js'
 </script>
 <template>
   <label class="psel">
     <span>Periode</span>
     <select v-model="honorState.periode">
-      <option v-for="p in periodeOptions" :key="p">{{ p }}</option>
+      <option v-for="p in honorState.periodeOptions" :key="p">{{ p }}</option>
     </select>
   </label>
 </template>

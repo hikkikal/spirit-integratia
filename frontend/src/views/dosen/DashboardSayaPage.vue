@@ -1,17 +1,38 @@
 <script setup>
-import { computed, ref } from 'vue'
-import { profil, riwayat, kelasPeriode, TARIF_REGULER } from '../../data/dosen.js'
-import { hitungHonor } from '../../lib/honor.js'
+import { computed, ref, watch, onMounted } from 'vue'
+import { getProfilSaya, getRiwayat, getKelasSaya, honorDariRiwayat, TARIF_REGULER } from '../../services/data.js'
 import { rupiah } from '../../lib/format.js'
 
-const periode = ref(riwayat[0].periode)
-const data = computed(() => riwayat.find((r) => r.periode === periode.value))
-const hon = computed(() => hitungHonor(data.value.lebih, TARIF_REGULER))
-const kelas = computed(() => kelasPeriode[periode.value] ?? [])
+const profil = ref(null)
+const riwayat = ref([])
+const periode = ref('')
+const kelas = ref([])
+const galat = ref('')
+const selesai = ref(false)
+const data = computed(() => riwayat.value.find((r) => r.periode === periode.value))
+const hon = computed(() => honorDariRiwayat(data.value))
+async function muatKelas() {
+  if (!periode.value) return
+  try { kelas.value = (await getKelasSaya(periode.value)).kelas } catch (e) { galat.value = e.message }
+}
+onMounted(async () => {
+  try {
+    ;[profil.value, riwayat.value] = await Promise.all([getProfilSaya(), getRiwayat()])
+    periode.value = riwayat.value[0]?.periode ?? ''
+    await muatKelas()
+  } catch (e) {
+    galat.value = e.message
+  }
+  selesai.value = true
+})
+watch(periode, muatKelas)
 const sksKelas = computed(() => kelas.value.reduce((a, k) => a + k.sks, 0))
 </script>
 
 <template>
+  <p v-if="!selesai" class="kosong">Memuat…</p>
+  <p v-else-if="!data" class="kosong" role="alert">{{ galat || 'Belum ada data honor untuk akun ini.' }}</p>
+  <template v-else>
   <h1 class="page-title">Halo, {{ profil.nama }}</h1>
   <p class="page-sub">{{ profil.jabatan }} · {{ periode }} · Sumber: LKD versi 1</p>
 
@@ -67,6 +88,7 @@ const sksKelas = computed(() => kelas.value.reduce((a, k) => a + k.sks, 0))
       </table>
     </div>
   </section>
+  </template>
 </template>
 
 <style scoped>

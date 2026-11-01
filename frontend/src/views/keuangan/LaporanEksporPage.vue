@@ -1,10 +1,9 @@
 <script setup>
-import { computed, ref } from 'vue'
-import { laporanJurusan } from '../../data/mock.js'
-import { honorState, catatEkspor, kunciPeriode } from '../../stores/honor.js'
+import { computed, ref, watch, onMounted } from 'vue'
+import { getDashboard } from '../../services/data.js'
+import { honorState, catatEkspor, kunciPeriode, siapkanPeriode } from '../../stores/honor.js'
 import { auth } from '../../stores/auth.js'
 import { angka, rupiah } from '../../lib/format.js'
-import { periodeOptions } from '../../data/mock.js'
 
 // Pimpinan hanya melihat rekap. Ekspor, kunci periode, dan riwayat ekspor hanya untuk Bidang Keuangan.
 // Backend tetap harus menolak ekspor dan kunci dari peran lain.
@@ -13,15 +12,29 @@ const filterJurusan = ref('')
 const filterStatus = ref('')
 const terkunci = computed(() => !!honorState.terkunci[honorState.periode])
 
+const laporanJurusan = ref([])
+const galat = ref('')
+async function muat() {
+  galat.value = ''
+  try {
+    await siapkanPeriode()
+    laporanJurusan.value = (await getDashboard(honorState.periode)).laporan
+  } catch (e) {
+    galat.value = e.message
+  }
+}
+onMounted(muat)
+watch(() => honorState.periode, muat)
+
 const baris = computed(() =>
-  laporanJurusan.filter(
+  laporanJurusan.value.filter(
     (j) =>
       (!filterJurusan.value || j.nama === filterJurusan.value) &&
       (!filterStatus.value || (filterStatus.value === 'terverifikasi' ? j.terverifikasi : j.menunggu) > 0),
   ),
 )
 const jml = (f) => baris.value.reduce((a, j) => a + j[f], 0)
-const totalMenunggu = laporanJurusan.reduce((a, j) => a + j.menunggu, 0)
+const totalMenunggu = computed(() => laporanJurusan.value.reduce((a, j) => a + j.menunggu, 0))
 
 // TODO(backend): unduh file Excel/PDF sungguhan dari API. Sekarang hanya mencatat riwayat.
 function ekspor(format) {
@@ -33,9 +46,10 @@ function ekspor(format) {
   <h1 class="page-title">{{ bisaEkspor ? 'Laporan & Ekspor' : 'Laporan' }}</h1>
   <p class="page-sub">Rekap honor per jurusan · {{ honorState.periode }}</p>
 
+  <p v-if="galat" class="panel" role="alert">{{ galat }}</p>
   <div class="filters">
     <label>Periode
-      <select v-model="honorState.periode"><option v-for="p in periodeOptions" :key="p">{{ p }}</option></select>
+      <select v-model="honorState.periode"><option v-for="p in honorState.periodeOptions" :key="p">{{ p }}</option></select>
     </label>
     <label>Jurusan
       <select v-model="filterJurusan"><option value="">Semua jurusan</option><option v-for="j in laporanJurusan" :key="j.nama">{{ j.nama }}</option></select>

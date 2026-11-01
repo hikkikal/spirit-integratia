@@ -1,8 +1,15 @@
 import { API_URL, api } from './api.js'
 
 // "sso"  = produksi: login lewat CAS PNJ, divalidasi backend Laravel.
+// "dev"  = pengembangan dengan backend lokal: pilih peran, backend membuat sesi (hanya APP_ENV=local).
 // "mock" = pengembangan: form tiruan, tanpa backend dan tanpa password sungguhan.
-export const AUTH_MODE = import.meta.env.VITE_AUTH_MODE === 'sso' ? 'sso' : 'mock'
+const MODE = import.meta.env.VITE_AUTH_MODE
+export const AUTH_MODE = MODE === 'sso' ? 'sso' : MODE === 'dev' ? 'dev' : 'mock'
+
+// Mode dev saja. Backend menolak (404) bila bukan APP_ENV=local.
+export async function devLogin(role) {
+  return (await api('/dev-login', { method: 'POST', body: { role } })).data
+}
 
 // Mode SSO: browser dialihkan ke backend, backend ke CAS. Tidak ada password lewat aplikasi ini.
 export function startSso() {

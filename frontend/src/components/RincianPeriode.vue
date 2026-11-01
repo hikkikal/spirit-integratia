@@ -35,7 +35,10 @@ defineProps({
   </section>
 
   <section class="panel">
-    <p v-if="!minggu.length" class="kosong">Rincian per minggu periode ini belum tersedia (menunggu data dari SISTER).</p>
+    <template v-if="!minggu.length">
+      <p class="kosong">Rincian per minggu periode ini belum tersedia (menunggu kalender akademik dari SISTER).</p>
+      <RouterLink :to="detailTo()" class="btn btn--ghost sm">Lihat detail honor per kelas</RouterLink>
+    </template>
     <div v-else class="scroll-x">
       <table class="tbl tbl--line">
         <thead>

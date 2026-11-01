@@ -1,8 +1,24 @@
 <script setup>
+import { computed, ref, onMounted } from 'vue'
 import { TARIF_KERJA_SAMA, tarifPendidikan } from '../../data/mock.js'
 import { TARIF_REGULER } from '../../data/dosen.js'
-import { BATAS_100, BATAS_50, TARIF_PAJAK } from '../../lib/honor.js'
+import { BATAS_100 as B100, BATAS_50 as B50, TARIF_PAJAK as PAJAK0 } from '../../lib/honor.js'
+import { getTarif } from '../../services/data.js'
 import { rupiah } from '../../lib/format.js'
+
+// Mode API: tarif, pajak, dan batas diambil dari master tarif di basis data.
+const api = ref(null)
+onMounted(async () => {
+  try { api.value = await getTarif() } catch { /* tetap pakai nilai bawaan */ }
+})
+const cari = (jenis) => api.value?.tarif.find((t) => t.jenis === jenis && (t.golongan === 'Semua' || t.golongan === 'III'))?.perSks
+const tarifReguler = computed(() => cari('Reguler') ?? TARIF_REGULER)
+const tarifKerjaSama = computed(() => cari('Kerja Sama') ?? TARIF_KERJA_SAMA)
+const BATAS_100 = computed(() => Number(api.value?.aturan?.batas_sks_100 ?? B100))
+const BATAS_50 = computed(() => Number(api.value?.aturan?.batas_sks_50 ?? B50))
+const pajakKet = computed(() => api.value
+  ? api.value.pajak.map((p) => `Gol ${p.golongan} ${p.tarif <= 1 ? p.tarif * 100 : p.tarif}%`).join(', ')
+  : `${PAJAK0 * 100}%`)
 
 // Halaman baca-saja. Belum ada desain Figma untuk halaman ini; isi mengikuti aturan yang
 // dipakai perhitungan. TODO(backend): ambil dari tabel master tarif supaya selalu terbaru.
@@ -19,11 +35,11 @@ import { rupiah } from '../../lib/format.js'
       <li>{{ BATAS_100 }} SKS lebih pertama dibayar 100%.</li>
       <li>{{ BATAS_50 }} SKS lebih berikutnya dibayar 50%.</li>
       <li>SKS lebih sisanya tidak dibayar.</li>
-      <li>Pajak sementara {{ TARIF_PAJAK * 100 }}% dari honor bruto (belum dikonfirmasi).</li>
+      <li>Pajak sementara {{ pajakKet }} dari honor bruto (belum dikonfirmasi).</li>
     </ol>
     <div class="tarif">
-      <div class="kartu"><span>Tarif reguler (Gol III)</span><strong>{{ rupiah(TARIF_REGULER) }} / SKS</strong></div>
-      <div class="kartu"><span>Tarif kerja sama</span><strong>{{ rupiah(TARIF_KERJA_SAMA) }} / SKS</strong></div>
+      <div class="kartu"><span>Tarif reguler (Gol III)</span><strong>{{ rupiah(tarifReguler) }} / SKS</strong></div>
+      <div class="kartu"><span>Tarif kerja sama</span><strong>{{ rupiah(tarifKerjaSama) }} / SKS</strong></div>
     </div>
     <p class="sumber">Sumber: Keputusan Direktur No. 638/2026 dan Peraturan Direktur No. 11/2025.</p>
   </section>

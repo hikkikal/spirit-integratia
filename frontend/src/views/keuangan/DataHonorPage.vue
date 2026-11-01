@@ -1,7 +1,7 @@
 <script setup>
-import { computed, ref } from 'vue'
-import { honorState } from '../../stores/honor.js'
-import { jurusan } from '../../data/mock.js'
+import { computed, ref, watch, onMounted } from 'vue'
+import { honorState, muatDaftar } from '../../stores/honor.js'
+import { USE_MOCK } from '../../services/api.js'
 import { rupiah } from '../../lib/format.js'
 import { useBase } from '../../lib/useBase.js'
 import StatusBadge from '../../components/StatusBadge.vue'
@@ -10,7 +10,10 @@ import PeriodeSelect from '../../components/PeriodeSelect.vue'
 const base = useBase()
 const cari = ref('')
 // Data tiruan hanya ada untuk Teknik Informatika dan Komputer, jadi itu pilihan awal (sesuai Figma).
-const filterJurusan = ref('Teknik Informatika dan Komputer')
+const filterJurusan = ref(USE_MOCK ? 'Teknik Informatika dan Komputer' : '')
+const jurusan = computed(() => [...new Set(honorState.dosen.map((d) => d.jurusan).filter(Boolean))].sort().map((nama) => ({ nama })))
+onMounted(muatDaftar)
+watch(() => honorState.periode, muatDaftar)
 
 const hasil = computed(() =>
   honorState.dosen.filter(
@@ -54,7 +57,9 @@ const hasil = computed(() =>
             <td><StatusBadge :status="d.status" /></td>
             <td><RouterLink :to="`${base}/data-honor/${d.id}`" class="btn btn--ghost btn--sm">Detail</RouterLink></td>
           </tr>
-          <tr v-if="!hasil.length"><td colspan="8" class="kosong">Tidak ada data yang cocok.</td></tr>
+          <tr v-if="honorState.muat"><td colspan="8" class="kosong">Memuat…</td></tr>
+          <tr v-else-if="honorState.galat"><td colspan="8" class="kosong" role="alert">{{ honorState.galat }}</td></tr>
+          <tr v-else-if="!hasil.length"><td colspan="8" class="kosong">Tidak ada data yang cocok.</td></tr>
         </tbody>
       </table>
     </div>

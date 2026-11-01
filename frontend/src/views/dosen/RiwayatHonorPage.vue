@@ -1,25 +1,37 @@
 <script setup>
-import { computed, ref } from 'vue'
-import { riwayat, TARIF_REGULER } from '../../data/dosen.js'
-import { hitungHonor } from '../../lib/honor.js'
+import { computed, ref, onMounted } from 'vue'
+import { getRiwayat, honorDariRiwayat } from '../../services/data.js'
 import { rupiah } from '../../lib/format.js'
 import { useBase } from '../../lib/useBase.js'
 
 const base = useBase()
-const baris = riwayat.map((r) => ({ ...r, ...hitungHonor(r.lebih, TARIF_REGULER) }))
-const totalNetto = baris.reduce((a, b) => a + b.netto, 0)
-const totalLebih = baris.reduce((a, b) => a + b.lebih, 0)
-const terakhir = baris[0]
+const baris = ref([])
+const selesai = ref(false)
+const galat = ref('')
+onMounted(async () => {
+  try {
+    baris.value = (await getRiwayat()).map((r) => ({ ...r, ...honorDariRiwayat(r) }))
+  } catch (e) {
+    galat.value = e.message
+  }
+  selesai.value = true
+})
+const totalNetto = computed(() => baris.value.reduce((a, b) => a + b.netto, 0))
+const totalLebih = computed(() => baris.value.reduce((a, b) => a + b.lebih, 0))
+const terakhir = computed(() => baris.value[0])
 
 // Grafik batang: urutan lama ke baru, dengan periode terbaru disorot.
-const grafik = [...baris].reverse()
-const maks = Math.max(...grafik.map((b) => b.bruto))
+const grafik = computed(() => [...baris.value].reverse())
+const maks = computed(() => Math.max(1, ...grafik.value.map((b) => b.bruto)))
 const singkat = (p) => p.replace(/(\d{2})(\d{2})\/(\d{2})(\d{2})/, '$2/$4')
 const aktif = ref(null)
-const tinggi = (b) => Math.round((b.bruto / maks) * 100)
+const tinggi = (b) => Math.round((b.bruto / maks.value) * 100)
 </script>
 
 <template>
+  <p v-if="!selesai">Memuat…</p>
+  <p v-else-if="!terakhir" role="alert">{{ galat || 'Belum ada riwayat honor.' }}</p>
+  <template v-else>
   <h1 class="page-title">Riwayat Honor</h1>
   <p class="page-sub">Ringkasan honor SKS lebih Anda dari periode ke periode</p>
 
@@ -56,6 +68,7 @@ const tinggi = (b) => Math.round((b.bruto / maks) * 100)
       </table>
     </div>
   </section>
+  </template>
 </template>
 
 <style scoped>

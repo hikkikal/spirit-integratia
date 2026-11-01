@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import { setUser } from '../stores/auth.js'
 import BrandLogo from '../components/BrandLogo.vue'
 import illustration from '../assets/login-illustration.png'
-import { AUTH_MODE, mockLogin, startSso } from '../services/auth.js'
+import { AUTH_MODE, mockLogin, devLogin, startSso } from '../services/auth.js'
 import { ROLES, homeFor } from '../lib/roles.js'
 
 const router = useRouter()
@@ -18,7 +18,8 @@ const error = ref(new URLSearchParams(location.search).get('error') === 'unregis
   ? 'Akun SSO Anda belum terdaftar di Integratia. Hubungi admin.'
   : '')
 
-const canSubmit = computed(() => nip.value.trim() !== '' && !loading.value)
+const isDev = AUTH_MODE === 'dev'
+const canSubmit = computed(() => (isDev || nip.value.trim() !== '') && !loading.value)
 
 // Mode mock saja (pengembangan). Kolom password tidak diperiksa dan tidak dikirim ke mana pun.
 async function onSubmit() {
@@ -29,7 +30,7 @@ async function onSubmit() {
   error.value = ''
   loading.value = true
   try {
-    const user = await mockLogin({ nip: nip.value.trim(), role: role.value })
+    const user = isDev ? await devLogin(role.value) : await mockLogin({ nip: nip.value.trim(), role: role.value })
     setUser(user)
     const gagal = await router.push(homeFor(user.role))
     if (gagal) throw new Error('Gagal membuka halaman setelah login.')
@@ -68,11 +69,11 @@ async function onSubmit() {
         <h1 class="sr-only">Masuk ke Integratia</h1>
         <BrandLogo class="form__logo" :size="72" />
 
-        <div class="field">
+        <div v-if="!isDev" class="field">
           <label for="nip">NIP</label>
           <input id="nip" v-model="nip" type="text" inputmode="numeric" autocomplete="username" />
         </div>
-        <div class="field">
+        <div v-if="!isDev" class="field">
           <label for="password">Password</label>
           <input id="password" v-model="password" type="password" autocomplete="off" />
         </div>

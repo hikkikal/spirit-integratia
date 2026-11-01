@@ -1,3 +1,8 @@
+# ==============================
+# INTEGRATIA (backend + frontend)
+# Letakkan file ini di akar folder integratia
+# ==============================
+
 # Operating systems
 .DS_Store
 .AppleDouble
@@ -11,10 +16,13 @@ $RECYCLE.BIN/
 .Trash-*
 .nfs*
 
-# Environment files
+.sops.*
+
+# Environment files (kredensial: JANGAN di-commit)
 .env
 .env.*
 !.env.example
+env.sh
 
 # Editors and IDEs
 .idea/
@@ -33,3 +41,52 @@ nbproject/private/
 *~
 .#*
 #*#
+
+# Paket data SISTER + dummy database (data dan skrip lokal)
+paket_data/
+raw/
+keluaran_sister/
+keluaran_semua/
+keluaran_semua_tersamar/
+*.zip
+*.rar
+
+# Frontend (Vue + Vite)
+node_modules/
+dist/
+dist-ssr/
+.vite/
+*.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+coverage/
+
+# Backend (Laravel)
+backend/vendor/
+backend/node_modules/
+backend/public/hot
+backend/public/storage
+backend/storage/*.key
+backend/storage/pail
+backend/storage/framework/cache/*
+backend/storage/framework/sessions/*
+backend/storage/framework/views/*
+backend/storage/logs/*
+!backend/storage/framework/cache/.gitkeep
+!backend/storage/framework/sessions/.gitkeep
+!backend/storage/framework/views/.gitkeep
+!backend/storage/logs/.gitkeep
+backend/bootstrap/cache/*.php
+.phpunit.result.cache
+.phpunit.cache/
+Homestead.json
+Homestead.yaml
+auth.json
+
+backend/**/*.md
+frontend/**/*.md
+
+# Log
+*.log

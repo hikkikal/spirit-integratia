@@ -1,25 +1,31 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { auth } from '../../stores/auth.js'
 import { ROLES } from '../../lib/roles.js'
-import { profil } from '../../data/dosen.js'
+import { getProfilSaya } from '../../services/data.js'
 import GantiAkunModal from '../../components/GantiAkunModal.vue'
 
 const modal = ref(false)
 const roles = () => (auth.user?.roles?.length ? auth.user.roles : [auth.user?.role])
 
-const identitas = [
-  ['NIDN', profil.nidn],
-  ['Nomor Sertifikat', profil.sertifikat],
-  ['Status', profil.status],
-  ['Tempat/Tanggal Lahir', profil.ttl],
-  ['No. Handphone', profil.hp],
-  ['Email', profil.email],
-]
+const profil = ref(null)
+const galat = ref('')
+onMounted(async () => {
+  try { profil.value = await getProfilSaya() } catch (e) { galat.value = e.message }
+})
+const identitas = computed(() => [
+  ['NIDN', profil.value.nidn],
+  ['Nomor Sertifikat', profil.value.sertifikat],
+  ['Status', profil.value.status],
+  ['Tempat/Tanggal Lahir', profil.value.ttl],
+  ['No. Handphone', profil.value.hp],
+  ['Email', profil.value.email],
+])
 </script>
 
 <template>
-  <div class="wrap">
+  <p v-if="!profil" role="alert">{{ galat || 'Memuat…' }}</p>
+  <div v-else class="wrap">
     <div class="banner"></div>
     <section class="head">
       <svg class="ava" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="none" stroke="#000" stroke-width="1.6" /><circle cx="12" cy="9" r="3.2" /><path d="M5.5 18.5c1.3-3 3.6-4.4 6.5-4.4s5.2 1.4 6.5 4.4c-1.8 1.9-4 2.8-6.5 2.8s-4.7-.9-6.5-2.8z" /></svg>
@@ -55,7 +61,7 @@ const identitas = [
       </div>
     </section>
   </div>
-  <GantiAkunModal v-if="modal" @close="modal = false" />
+  <GantiAkunModal v-if="profil && modal" @close="modal = false" />
 </template>
 
 <style scoped>

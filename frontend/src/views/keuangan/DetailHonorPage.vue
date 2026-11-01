@@ -1,9 +1,8 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { honorState, tandaiTerverifikasi } from '../../stores/honor.js'
-import { detailKelas, TARIF_KERJA_SAMA } from '../../data/mock.js'
-import { hitungBaris } from '../../lib/honor.js'
+import { honorState, tandaiTerverifikasi, siapkanPeriode } from '../../stores/honor.js'
+import { getDetailHonor } from '../../services/data.js'
 import { rupiah } from '../../lib/format.js'
 import { useBase } from '../../lib/useBase.js'
 import { auth } from '../../stores/auth.js'
@@ -11,18 +10,41 @@ import StatusBadge from '../../components/StatusBadge.vue'
 
 // backTo: alamat halaman yang membuka detail ini (Kembali selalu ke sana).
 // tampilKerjaSama: role Dosen menampilkan kartu Tarif Kerja Sama (mengikuti Figma).
-const props = defineProps({ id: String, backTo: String, periode: String, tampilKerjaSama: Boolean })
+// id kosong = detail milik dosen yang sedang login (role Dosen).
+const props = defineProps({ id: String, backTo: String, periode: String, tampilKerjaSama: Boolean, milikSendiri: Boolean })
 const router = useRouter()
 const base = useBase()
 // Hanya Bidang Keuangan yang boleh memverifikasi. Backend tetap harus memeriksa ulang.
 const bisaVerifikasi = computed(() => auth.user?.role === 'keuangan')
 
-const dosen = computed(() => honorState.dosen.find((d) => d.id === props.id))
-const detail = computed(() => detailKelas[props.id])
+const detail = ref(null)
+const selesai = ref(false)
+const galat = ref('')
+const dosen = computed(() => detail.value)
+const periodeAktif = computed(() => props.periode || honorState.periode)
+async function muat() {
+  galat.value = ''
+  try {
+    if (!props.periode) await siapkanPeriode()
+    detail.value = await getDetailHonor(props.milikSendiri ? null : props.id, periodeAktif.value)
+  } catch (e) {
+    detail.value = null
+    galat.value = e.message
+  }
+  selesai.value = true
+}
+onMounted(muat)
+watch(() => [props.id, periodeAktif.value], muat)
+async function verif() {
+  try {
+    await tandaiTerverifikasi(props.id)
+    await muat()
+  } catch (e) {
+    galat.value = e.message
+  }
+}
 
-const baris = computed(() =>
-  (detail.value?.kelas ?? []).map((k) => ({ ...k, ...hitungBaris(k, detail.value.tarifReguler) })),
-)
+const baris = computed(() => detail.value?.kelas ?? [])
 const jumlah = (f) => baris.value.reduce((a, k) => a + k[f], 0)
 const total = computed(() => ({
   wajib: jumlah('wajib'), lebih100: jumlah('lebih100'), lebih50: jumlah('lebih50'), lebih0: jumlah('lebih0'),
@@ -34,7 +56,8 @@ function kembali() {
 </script>
 
 <template>
-  <p v-if="!dosen" class="panel">Dosen tidak ditemukan.</p>
+  <p v-if="!selesai" class="panel">Memuat…</p>
+  <p v-else-if="!dosen" class="panel" role="alert">{{ galat || 'Rincian kelas dosen ini belum tersedia (menunggu perhitungan).' }}</p>
   <template v-else>
     <h1 class="title">Detail honor:<br />{{ dosen.nama }}</h1>
     <button class="kembali" @click="kembali">◂ Kembali</button>
@@ -43,17 +66,16 @@ function kembali() {
       <div class="kartu"><span>Jabatan</span><strong>{{ dosen.jabatan }} ({{ dosen.golongan }})</strong></div>
       <div class="kartu"><span>SKS wajib</span><strong>{{ dosen.sksWajib }}</strong></div>
       <div class="kartu"><span>SKS lebih</span><strong>{{ dosen.sksLebih }}</strong></div>
-      <div class="kartu"><span>Tarif Reguler</span><strong>{{ rupiah(detail?.tarifReguler ?? 130000) }} / SKS</strong></div>
-      <div v-if="tampilKerjaSama" class="kartu"><span>Tarif Kerja Sama</span><strong>{{ rupiah(TARIF_KERJA_SAMA) }} / SKS</strong></div>
+      <div class="kartu"><span>Tarif Reguler</span><strong>{{ rupiah(detail.tarifReguler) }} / SKS</strong></div>
+      <div v-if="tampilKerjaSama" class="kartu"><span>Tarif Kerja Sama</span><strong>{{ rupiah(detail.tarifKerjaSama) }} / SKS</strong></div>
       <div class="kartu"><span>Status</span><StatusBadge :status="dosen.status" /></div>
-      <button v-if="bisaVerifikasi" class="btn verif" :disabled="dosen.status === 'terverifikasi'" @click="tandaiTerverifikasi(dosen.id)">
+      <button v-if="bisaVerifikasi" class="btn verif" :disabled="dosen.status === 'terverifikasi'" @click="verif">
         {{ dosen.status === 'terverifikasi' ? 'Sudah terverifikasi' : 'Tandai terverifikasi' }}
       </button>
     </section>
 
     <section class="panel tabel">
-      <p v-if="!detail" class="kosong">Rincian kelas dosen ini belum tersedia (menunggu data dari SISTER).</p>
-      <div v-else class="scroll-x">
+      <div class="scroll-x">
         <table class="tbl tbl--line">
           <thead>
             <tr>
@@ -79,7 +101,7 @@ function kembali() {
         </table>
       </div>
     </section>
-    <p v-if="detail" class="note">Periode {{ periode || honorState.periode }} · pajak 5% (sementara, belum dikonfirmasi).</p>
+    <p class="note">Periode {{ periodeAktif }} · {{ detail.pajakKet }}.</p>
   </template>
 </template>
 

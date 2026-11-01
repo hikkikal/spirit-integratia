@@ -1,14 +1,33 @@
 <script setup>
-import { jurusan, honorTerverifikasi } from '../../data/mock.js'
-import { honorState } from '../../stores/honor.js'
+import { computed, ref, watch, onMounted } from 'vue'
+import { getDashboard } from '../../services/data.js'
+import { honorState, siapkanPeriode } from '../../stores/honor.js'
 import { angka, rupiah, persen } from '../../lib/format.js'
 import PeriodeSelect from '../../components/PeriodeSelect.vue'
 
-const totalDosen = jurusan.reduce((a, j) => a + j.dosen, 0)
-const totalSks = jurusan.reduce((a, j) => a + j.sksLebih, 0)
-const totalHonor = jurusan.reduce((a, j) => a + j.honor, 0)
-const verif = jurusan.reduce((a, j) => a + j.terverifikasi, 0)
-const belumHonor = totalHonor - honorTerverifikasi
+const jurusan = ref([])
+const honorTerverifikasi = ref(0)
+const galat = ref('')
+const jum = (f) => jurusan.value.reduce((a, j) => a + j[f], 0)
+const totalDosen = computed(() => jum('dosen'))
+const totalSks = computed(() => jum('sksLebih'))
+const totalHonor = computed(() => jum('honor'))
+const verif = computed(() => jum('terverifikasi'))
+const belumHonor = computed(() => totalHonor.value - honorTerverifikasi.value)
+
+async function muat() {
+  galat.value = ''
+  try {
+    await siapkanPeriode()
+    const d = await getDashboard(honorState.periode)
+    jurusan.value = d.jurusan
+    honorTerverifikasi.value = d.honorTerverifikasi
+  } catch (e) {
+    galat.value = e.message
+  }
+}
+onMounted(muat)
+watch(() => honorState.periode, muat)
 </script>
 
 <template>
@@ -20,6 +39,7 @@ const belumHonor = totalHonor - honorTerverifikasi
     <PeriodeSelect />
   </div>
 
+  <p v-if="galat" class="panel" role="alert">{{ galat }}</p>
   <section class="top3">
     <div class="panel">
       <div class="lbl">Total honor dosen terverifikasi</div>
