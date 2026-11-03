@@ -3,7 +3,7 @@ import { computed, ref, onMounted } from 'vue'
 import { TARIF_KERJA_SAMA, tarifPendidikan } from '../../data/mock.js'
 import { TARIF_REGULER } from '../../data/dosen.js'
 import { BATAS_100 as B100, BATAS_50 as B50, TARIF_PAJAK as PAJAK0 } from '../../lib/honor.js'
-import { getTarif } from '../../services/data.js'
+import { getTarif, getDokumenReferensi, bukaDokumen } from '../../services/data.js'
 import { rupiah } from '../../lib/format.js'
 
 // Mode API: tarif, pajak, dan batas diambil dari master tarif di basis data.
@@ -19,6 +19,17 @@ const BATAS_50 = computed(() => Number(api.value?.aturan?.batas_sks_50 ?? B50))
 const pajakKet = computed(() => api.value
   ? api.value.pajak.map((p) => `Gol ${p.golongan} ${p.tarif <= 1 ? p.tarif * 100 : p.tarif}%`).join(', ')
   : `${PAJAK0 * 100}%`)
+
+const dokumen = ref([])
+const galatDok = ref('')
+onMounted(async () => {
+  try { dokumen.value = await getDokumenReferensi() } catch { dokumen.value = [] }
+})
+const dokumenUrut = computed(() => [...dokumen.value].sort((a, b) => Number(b.berlaku) - Number(a.berlaku)))
+async function buka(d) {
+  galatDok.value = ''
+  try { await bukaDokumen(d.id) } catch (e) { galatDok.value = e.message }
+}
 
 // Halaman baca-saja. Belum ada desain Figma untuk halaman ini; isi mengikuti aturan yang
 // dipakai perhitungan. TODO(backend): ambil dari tabel master tarif supaya selalu terbaru.
@@ -42,6 +53,24 @@ const pajakKet = computed(() => api.value
       <div class="kartu"><span>Tarif kerja sama</span><strong>{{ rupiah(tarifKerjaSama) }} / SKS</strong></div>
     </div>
     <p class="sumber">Sumber: Keputusan Direktur No. 638/2026 dan Peraturan Direktur No. 11/2025.</p>
+  </section>
+
+  <section v-if="dokumen.length" class="panel blok">
+    <h2>Dokumen referensi</h2>
+    <p class="muted">Peraturan yang menjadi dasar tarif. Dibuka dalam tab baru.</p>
+    <ul class="dok">
+      <li v-for="d in dokumenUrut" :key="d.id">
+        <div>
+          <strong>{{ d.nomor }}</strong>
+          <span v-if="!d.berlaku" class="badge">Tidak berlaku</span><br />
+          <span class="muted">{{ d.judul }}</span>
+        </div>
+        <button class="btn" :disabled="!d.adaBerkas" :title="d.adaBerkas ? d.berkas : 'Berkas belum diunggah'" @click="buka(d)">
+          {{ d.adaBerkas ? 'Lihat dokumen' : 'Berkas belum diunggah' }}
+        </button>
+      </li>
+    </ul>
+    <p v-if="galatDok" class="galat" role="alert">{{ galatDok }}</p>
   </section>
 
   <section class="panel blok">
@@ -71,4 +100,9 @@ ol { margin: 0 0 16px; padding-left: 22px; display: grid; gap: 4px; }
 .muted, .sumber { color: #55554f; font-size: 14px; }
 .r { text-align: right; }
 .tbl { font-size: 15px; }
+.dok { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.dok li { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; border-top: 1px solid #ddd; padding-top: 10px; }
+.dok li:first-child { border-top: 0; padding-top: 0; }
+.badge { margin-left: 8px; font-size: 12px; background: #eee; border-radius: 10px; padding: 2px 8px; }
+.galat { color: #a40000; font-size: 14px; }
 </style>

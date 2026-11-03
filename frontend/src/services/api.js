@@ -23,7 +23,40 @@ async function pastikanCsrf() {
   csrfSiap = true
 }
 
-export async function api(path, { method = 'GET', body, query } = {}) {
+// export async function api(path, { method = 'GET', body, query } = {}) {
+//   if (method !== 'GET') await pastikanCsrf()
+//   const qs = query ? '?' + new URLSearchParams(Object.entries(query).filter(([, v]) => v !== '' && v != null)) : ''
+//   const res = await fetch(`${API_URL}/api${path}${qs}`, {
+//     method,
+//     credentials: 'include',
+//     headers: {
+//       Accept: 'application/json',
+//       ...(body && !(body instanceof FormData) ? { 'Content-Type': 'application/json' } : {}),
+//       ...(method !== 'GET' ? { 'X-XSRF-TOKEN': csrfToken() } : {}),
+//     },
+//     body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,
+//   })
+//   if (res.status === 401) {
+//     // Sesi habis: bersihkan dan kembali ke login.
+//     const { setUser } = await import('../stores/auth.js')
+//     setUser(null)
+//     if (location.pathname !== '/login') location.assign('/login')
+//   }
+//   if (!res.ok) {
+//     let msg = `Permintaan gagal (${res.status}).`
+//     try {
+//       msg = (await res.json()).message || msg
+//     } catch {
+//       /* respons bukan JSON */
+//     }
+//     throw new ApiError(res.status, msg)
+//   }
+//   return res.status === 204 ? null : res.json()
+// }
+
+// tanpaAlihan: untuk pemanggilan yang 401-nya memang diharapkan (cek sesi, validasi tiket SSO);
+// penanggilnya yang menangani, bukan pengalihan paksa ke /login.
+export async function api(path, { method = 'GET', body, query, tanpaAlihan = false } = {}) {
   if (method !== 'GET') await pastikanCsrf()
   const qs = query ? '?' + new URLSearchParams(Object.entries(query).filter(([, v]) => v !== '' && v != null)) : ''
   const res = await fetch(`${API_URL}/api${path}${qs}`, {
@@ -31,12 +64,12 @@ export async function api(path, { method = 'GET', body, query } = {}) {
     credentials: 'include',
     headers: {
       Accept: 'application/json',
-      ...(body ? { 'Content-Type': 'application/json' } : {}),
+      ...(body && !(body instanceof FormData) ? { 'Content-Type': 'application/json' } : {}),
       ...(method !== 'GET' ? { 'X-XSRF-TOKEN': csrfToken() } : {}),
     },
-    body: body ? JSON.stringify(body) : undefined,
+    body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,
   })
-  if (res.status === 401) {
+  if (res.status === 401 && !tanpaAlihan) {
     // Sesi habis: bersihkan dan kembali ke login.
     const { setUser } = await import('../stores/auth.js')
     setUser(null)

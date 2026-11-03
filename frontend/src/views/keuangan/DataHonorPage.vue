@@ -2,6 +2,8 @@
 import { computed, ref, watch, onMounted } from 'vue'
 import { honorState, muatDaftar } from '../../stores/honor.js'
 import { USE_MOCK } from '../../services/api.js'
+import { hitungUlang } from '../../services/data.js'
+import { auth } from '../../stores/auth.js'
 import { rupiah } from '../../lib/format.js'
 import { useBase } from '../../lib/useBase.js'
 import StatusBadge from '../../components/StatusBadge.vue'
@@ -13,6 +15,29 @@ const cari = ref('')
 const filterJurusan = ref(USE_MOCK ? 'Teknik Informatika dan Komputer' : '')
 const jurusan = computed(() => [...new Set(honorState.dosen.map((d) => d.jurusan).filter(Boolean))].sort().map((nama) => ({ nama })))
 onMounted(muatDaftar)
+
+// Hitung ulang: hanya Keuangan, hanya mode API (data tiruan tidak punya mesin hitung).
+const bisaHitung = computed(() => !USE_MOCK && auth.user?.role === 'keuangan')
+const menghitung = ref(false)
+const infoHitung = ref('')
+const galatHitung = ref('')
+async function hitung() {
+  if (menghitung.value) return
+  if (!window.confirm(`Hitung ulang honor periode ${honorState.periode}? Perhitungan yang sudah terverifikasi atau terkunci tidak diubah.`)) return
+  menghitung.value = true
+  infoHitung.value = ''
+  galatHitung.value = ''
+  try {
+    const h = await hitungUlang(honorState.periode)
+    const lewat = h.dilewati.terverifikasi + h.dilewati.terkunci + h.dilewati.disesuaikan
+    infoHitung.value = `${h.dihitung} dosen dihitung ulang${lewat ? `, ${lewat} dilewati (sudah terverifikasi/terkunci atau disesuaikan manual)` : ''}.`
+    if (h.tanpaTarif.length) galatHitung.value = `Tidak dihitung karena tarif belum diatur: ${h.tanpaTarif.join(', ')}.`
+    await muatDaftar()
+  } catch (e) {
+    galatHitung.value = e.message || 'Gagal menghitung ulang.'
+  }
+  menghitung.value = false
+}
 watch(() => honorState.periode, muatDaftar)
 
 const hasil = computed(() =>
@@ -39,8 +64,11 @@ const hasil = computed(() =>
         </select>
       </label>
       <PeriodeSelect />
+      <button v-if="bisaHitung" class="btn" type="button" :disabled="menghitung" @click="hitung">{{ menghitung ? 'Menghitung…' : 'Hitung ulang' }}</button>
     </div>
   </div>
+  <p v-if="infoHitung" class="info" role="status">{{ infoHitung }}</p>
+  <p v-if="galatHitung" class="galat" role="alert">{{ galatHitung }}</p>
 
   <section class="panel">
     <h2>Daftar dosen</h2>
@@ -79,4 +107,6 @@ h2 { font-size: 17px; margin: 0 0 22px; }
 .btn--sm { padding: 4px 18px; text-decoration: none; display: inline-block; font-size: 14px; }
 .tbl td { height: 50px; }
 .kosong { text-align: center; color: #77776f; }
+.info { margin: -12px 0 16px; color: #0b5e58; }
+.galat { margin: -12px 0 16px; color: #b42318; }
 </style>

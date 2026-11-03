@@ -73,7 +73,8 @@ class KeuanganController extends Controller
         $baris = DB::transaction(function () use ($request, $id, $p) {
             $n = DB::update(Kueri::VERIFIKASI, ['pengguna' => $request->user()->id_user, 'id' => $id, 'smt' => $p->id_smt]);
             if ($n === 1) {
-                DB::insert(Kueri::LOG, ['pelaku' => $request->user()->id_user, 'aksi' => 'Verifikasi honor', 'objek' => "dosen $id, periode {$p->label}"]);
+                DB::insert(Kueri::LOG, ['pelaku' => $request->user()->id_user, 'aksi' => 'Verifikasi honor', 'objek' => "dosen $id, periode {$p->label}",
+                    'peran' => $request->session()->get('peran_aktif'), 'status' => 'berhasil']);
             }
             return $n;
         });

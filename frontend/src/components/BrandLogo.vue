@@ -2,7 +2,7 @@
 // SLOT LOGO: ganti berkas src/assets/logo.svg (atau .png) dengan logo asli.
 // Logo ditaruh di lencana putih agar terbaca di atas latar hijau maupun terang,
 // jadi satu berkas logo cukup untuk semua tempat.
-import logoUrl from '../assets/logo.svg'
+import logoUrl from '../assets/Logo 1.png'
 
 defineProps({
   size: { type: Number, default: 96 },

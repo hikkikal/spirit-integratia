@@ -1,12 +1,12 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { ROLE_INFO, catatLog } from '../data/pengguna.js'
-import { auth } from '../stores/auth.js'
+import { ROLE_INFO } from '../data/pengguna.js'
+import { simpanRole } from '../services/super.js'
 import TambahRoleModal from './TambahRoleModal.vue'
 
 // Pop-up Kelola Role: tambah dan hapus role, lalu simpan. Perubahan baru berlaku setelah disimpan.
 const props = defineProps({ pengguna: { type: Object, required: true } })
-const emit = defineEmits(['close'])
+const emit = defineEmits(['close', 'tersimpan'])
 
 const asli = [...props.pengguna.roles]
 const roles = ref([...asli])
@@ -39,12 +39,19 @@ function batal() {
   roles.value = [...asli]
   error.value = ''
 }
-function simpan() {
-  // Demo: backend nanti memvalidasi ulang dan mencatat ke Log Aktivitas.
-  props.pengguna.roles = [...roles.value]
-  baru.value.forEach(() => catatLog(auth.user, 'Tambah role'))
-  dihapus.value.forEach(() => catatLog(auth.user, 'Hapus role'))
-  emit('close')
+const menyimpan = ref(false)
+async function simpan() {
+  if (menyimpan.value) return
+  menyimpan.value = true
+  error.value = ''
+  try {
+    // Server memvalidasi ulang (mis. Admin Super terakhir tidak boleh dicabut) dan mencatat ke Log Aktivitas.
+    emit('tersimpan', await simpanRole(props.pengguna.nip, roles.value))
+    emit('close')
+  } catch (e) {
+    error.value = e.message
+  }
+  menyimpan.value = false
 }
 const inisial = (n) => n.split(/\s+/).map((k) => k[0]).join('').slice(0, 2).toUpperCase()
 const onKey = (e) => e.key === 'Escape' && !pilihTambah.value && emit('close')
@@ -95,7 +102,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
             <span class="dot"></span>
             <strong>{{ jumlahUbah ? `${jumlahUbah} Perubahan belum disimpan` : 'Tidak ada Perubahan' }}</strong>
             <button class="btn btn--ghost" :disabled="!jumlahUbah" @click="batal">Batalkan Perubahan</button>
-            <button class="btn" :disabled="!jumlahUbah" @click="simpan">Simpan Perubahan</button>
+            <button class="btn" :disabled="!jumlahUbah || menyimpan" @click="simpan">{{ menyimpan ? 'Menyimpan…' : 'Simpan Perubahan' }}</button>
           </section>
         </div>
 

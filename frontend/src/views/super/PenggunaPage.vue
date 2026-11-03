@@ -1,37 +1,59 @@
 <script setup>
-import { computed, ref } from 'vue'
-import { penggunaList, ROLE_INFO, catatLog } from '../../data/pengguna.js'
-import { auth } from '../../stores/auth.js'
+import { computed, onMounted, ref } from 'vue'
+import { ROLE_INFO } from '../../data/pengguna.js'
+import { USE_MOCK } from '../../services/api.js'
+import { getPengguna, ubahStatusPengguna } from '../../services/super.js'
 import KelolaRoleModal from '../../components/KelolaRoleModal.vue'
 
-const daftar = penggunaList
+const daftar = ref([])
+const muat = ref(true)
+const galat = ref('')
+const sibuk = ref('') // NIP yang sedang diubah statusnya
+async function ambil() {
+  muat.value = true
+  galat.value = ''
+  try {
+    daftar.value = await getPengguna()
+  } catch (e) {
+    galat.value = e.message
+  }
+  muat.value = false
+}
+onMounted(ambil)
+function perbarui(baru) {
+  const i = daftar.value.findIndex((p) => p.nip === baru.nip)
+  if (i >= 0) daftar.value[i] = baru
+}
 const diubah = ref(null) // NIP pengguna yang rolenya sedang dikelola (pop-up)
-const pengguna = computed(() => daftar.find((p) => p.nip === diubah.value))
+const pengguna = computed(() => daftar.value.find((p) => p.nip === diubah.value))
 const cari = ref('')
 const role = ref('')
 const status = ref('')
 
 const tampil = computed(() => {
   const q = cari.value.trim().toLowerCase()
-  return daftar.filter((p) =>
+  return daftar.value.filter((p) =>
     (!q || p.nama.toLowerCase().includes(q) || p.nip.includes(q)) &&
     (!role.value || p.roles.includes(role.value)) &&
     (!status.value || (status.value === 'aktif') === p.aktif))
 })
 
-const hitung = (r) => daftar.filter((p) => p.aktif && p.roles.includes(r)).length
-// Angka ringkasan demo mengikuti desain (198 pengguna); daftar di bawah hanya contoh.
-const ringkas = computed(() => [
-  ['Pengguna aktif', 198],
-  ['Dosen', 180],
-  ['Admin Input', Math.max(3, hitung('admin'))],
-  ['Keuangan', 4],
-  ['Pimpinan / Super Admin', `8 / ${Math.max(3, hitung('admin_super'))}`],
-])
-
-function ubahStatus(p) {
-  p.aktif = !p.aktif
-  catatLog(auth.user, p.aktif ? 'Aktifkan pengguna' : 'Nonaktifkan pengguna')
+const hitung = (r) => daftar.value.filter((p) => p.aktif && p.roles.includes(r)).length
+// Mode tiruan: angka ringkasan mengikuti desain (198 pengguna); daftar hanya contoh. Mode API: dihitung dari data.
+const ringkas = computed(() =>
+  USE_MOCK
+    ? [['Pengguna aktif', 198], ['Dosen', 180], ['Admin Input', Math.max(3, hitung('admin'))], ['Keuangan', 4], ['Pimpinan / Super Admin', `8 / ${Math.max(3, hitung('admin_super'))}`]]
+    : [['Pengguna aktif', daftar.value.filter((p) => p.aktif).length], ['Dosen', hitung('dosen')], ['Admin Input', hitung('admin')], ['Keuangan', hitung('keuangan')], ['Pimpinan / Super Admin', `${hitung('pimpinan')} / ${hitung('admin_super')}`]],
+)
+async function ubahStatus(p) {
+  sibuk.value = p.nip
+  galat.value = ''
+  try {
+    perbarui(await ubahStatusPengguna(p.nip, !p.aktif))
+  } catch (e) {
+    galat.value = e.message
+  }
+  sibuk.value = ''
 }
 </script>
 
@@ -56,6 +78,7 @@ function ubahStatus(p) {
     </label>
   </div>
 
+  <p v-if="galat" class="galat" role="alert">{{ galat }}</p>
   <section class="stats">
     <div v-for="[k, v] in ringkas" :key="k" class="panel stat"><div class="lbl">{{ k }}</div><div class="val">{{ v }}</div></div>
   </section>
@@ -75,13 +98,14 @@ function ubahStatus(p) {
               <button v-if="!p.roles.includes('admin_super')" class="btn btn--ghost btn--sm" @click="ubahStatus(p)">{{ p.aktif ? 'Nonaktifkan' : 'Aktifkan' }}</button>
             </div></td>
           </tr>
-          <tr v-if="!tampil.length"><td colspan="6">Tidak ada pengguna yang cocok.</td></tr>
+          <tr v-if="muat"><td colspan="6">Memuat…</td></tr>
+          <tr v-else-if="!tampil.length"><td colspan="6">Tidak ada pengguna yang cocok.</td></tr>
         </tbody>
       </table>
     </div>
   </section>
 
-  <KelolaRoleModal v-if="pengguna" :key="pengguna.nip" :pengguna="pengguna" @close="diubah = null" />
+  <KelolaRoleModal v-if="pengguna" :key="pengguna.nip" :pengguna="pengguna" @tersimpan="perbarui" @close="diubah = null" />
 </template>
 
 <style scoped>
@@ -90,6 +114,7 @@ function ubahStatus(p) {
 .lbl { font-size: 14px; color: #55554f; }
 .val { font-size: 30px; font-weight: 600; margin-top: 8px; }
 h2 { font-size: 18px; margin: 0 0 8px; }
+.galat { color: #b3261e; margin: 0 0 12px; }
 .aksi { display: flex; gap: 8px; flex-wrap: wrap; text-decoration: none; }
 .aksi a { text-decoration: none; }
 @media (max-width: 1100px) { .stats { grid-template-columns: repeat(2, 1fr); } }

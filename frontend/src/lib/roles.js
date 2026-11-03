@@ -2,7 +2,7 @@
 export const ROLES = {
   keuangan: { label: 'Bidang Keuangan', chip: 'BIDANG KEUANGAN', base: '/keuangan' },
   pimpinan: { label: 'Pimpinan', chip: 'PIMPINAN', base: '/pimpinan' },
-  admin: { label: 'Admin Input', chip: 'ADMIN INPUT', base: '/admin' },
+  admin: { label: 'Admin Input Data', chip: 'Admin Input Data', base: '/admin' },
   dosen: { label: 'Dosen', chip: 'DOSEN', base: '/dosen' },
   admin_super: { label: 'Admin Super', chip: 'Admin Super', base: '/admin-super' },
 }
@@ -26,7 +26,8 @@ export const MENUS = {
   ],
   admin: [
     { label: 'Dashboard', to: 'dashboard', match: 'dashboard' },
-    { label: 'Data Dosen', to: 'data-honor', match: 'honor' },
+    { label: 'Master Tarif', to: 'master-tarif', match: 'tarif' },
+    { label: 'Dokumen Perdir', to: 'perdir', match: 'perdir' },
   ],
   admin_super: [
     { label: 'Kelola Pengguna', to: 'pengguna', match: 'pengguna' },

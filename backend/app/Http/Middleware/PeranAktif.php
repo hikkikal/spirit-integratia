@@ -15,6 +15,7 @@ class PeranAktif
         if (! $request->user() || ! in_array($aktif, $peran, true)) {
             abort(403, 'Peran Anda tidak boleh mengakses halaman ini.');
         }
+        abort_unless($request->user()->status_aktif, 403, 'Akun Anda dinonaktifkan.');
         return $next($request);
     }
 }

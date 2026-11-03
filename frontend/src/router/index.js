@@ -36,7 +36,13 @@ const routes = [
   { path: '/auth/callback', name: 'auth-callback', component: () => import('../views/AuthCallbackPage.vue') },
   area('keuangan', [...bersama, { path: 'laporan', name: 'laporan', component: Laporan }, profil]),
   area('pimpinan', [...bersama, { path: 'laporan', name: 'laporan', component: Laporan }, profil]),
-  area('admin', [...bersama, profil]),
+  area('admin', [
+    { path: 'dashboard', name: 'dashboard', component: () => import('../views/admin/DashboardAdminPage.vue') },
+    { path: 'dashboard/log/:id', name: 'dashboard-log', component: () => import('../views/admin/LogSinkronPage.vue'), props: true },
+    { path: 'master-tarif', name: 'master-tarif', component: () => import('../views/admin/MasterTarifPage.vue') },
+    { path: 'perdir', name: 'perdir', component: () => import('../views/admin/PerdirPage.vue') },
+    profil,
+  ]),
   area('admin_super', [
     { path: 'pengguna', name: 'pengguna', component: () => import('../views/super/PenggunaPage.vue') },
     { path: 'log', name: 'log', component: () => import('../views/super/LogAktivitasPage.vue') },

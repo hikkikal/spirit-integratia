@@ -50,6 +50,12 @@ const total = computed(() => ({
   wajib: jumlah('wajib'), lebih100: jumlah('lebih100'), lebih50: jumlah('lebih50'), lebih0: jumlah('lebih0'),
   subtotal: jumlah('subtotal'), pajak: jumlah('pajak'), honor: jumlah('honor'),
 }))
+const pecah = (n) => Number(n.toFixed(2)).toLocaleString('id-ID')
+// Rumus bruto per kelas, dari angka yang sama dengan kolom lain pada baris itu.
+const tarifKelas = (k) => k.tarif ?? (/^reguler/i.test(k.jenis) ? detail.value.tarifReguler : detail.value.tarifKerjaSama)
+const rumus = (k) => (k.lebih100 + k.lebih50 > 0 ? `(${pecah(k.lebih100)} + ${pecah(k.lebih50)} × 0,5) × ${rupiah(tarifKelas(k))}` : '-')
+const persenPajak = (k) => (k.subtotal ? pecah((k.pajak / k.subtotal) * 100) + '%' : '')
+const sksTerlaksana = computed(() => detail.value?.sksTerlaksana ?? (total.value.wajib + total.value.lebih100 + total.value.lebih50 + total.value.lebih0))
 function kembali() {
   router.push(props.backTo || `${base}/data-honor/${props.id}`)
 }
@@ -81,25 +87,37 @@ function kembali() {
             <tr>
               <th class="c">No</th><th>Kelas</th><th>Jenis kelas</th>
               <th class="c">SKS wajib<br />(100%)</th><th class="c">SKS lebih<br />(100%)</th><th class="c">SKS lebih<br />(50%)</th><th class="c">SKS lebih<br />(0%)</th>
-              <th class="c">Subtotal<br />honor bruto</th><th class="c">Pajak</th><th class="c">Honor</th>
+              <th class="c">Tarif<br />per SKS</th><th>Perhitungan bruto</th><th class="c">Subtotal<br />honor bruto</th><th class="c">Pajak</th><th class="c">Honor</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="(k, i) in baris" :key="k.mk">
               <td class="c">{{ i + 1 }}</td><td>{{ k.mk }}</td><td>{{ k.jenis }}</td>
               <td class="c">{{ k.wajib }}</td><td class="c">{{ k.lebih100 }}</td><td class="c">{{ k.lebih50 }}</td><td class="c">{{ k.lebih0 }}</td>
-              <td class="c">{{ rupiah(k.subtotal) }}</td><td class="c">{{ rupiah(k.pajak) }}</td><td class="c">{{ rupiah(k.honor) }}</td>
+              <td class="c">{{ rupiah(tarifKelas(k)) }}</td><td class="rumus-sel">{{ rumus(k) }}</td>
+              <td class="c">{{ rupiah(k.subtotal) }}</td>
+              <td class="c">{{ rupiah(k.pajak) }}<br /><small v-if="k.subtotal">{{ persenPajak(k) }}</small></td><td class="c">{{ rupiah(k.honor) }}</td>
             </tr>
           </tbody>
           <tfoot>
             <tr>
               <td></td><td colspan="2">Total</td>
               <td class="c">{{ total.wajib }}</td><td class="c">{{ total.lebih100 }}</td><td class="c">{{ total.lebih50 }}</td><td class="c">{{ total.lebih0 }}</td>
+              <td></td><td></td>
               <td class="c">{{ rupiah(total.subtotal) }}</td><td class="c">{{ rupiah(total.pajak) }}</td><td class="c">{{ rupiah(total.honor) }}</td>
             </tr>
           </tfoot>
         </table>
       </div>
+    </section>
+    <section class="panel rumus">
+      <h2>Cara perhitungan</h2>
+      <ol class="alur">
+        <li>SKS terlaksana: <strong>{{ pecah(sksTerlaksana) }}</strong> − SKS wajib <strong>{{ pecah(dosen.sksWajib) }}</strong> = SKS lebih <strong>{{ pecah(dosen.sksLebih) }}</strong>.</li>
+        <li>SKS wajib dipenuhi kelas Reguler terlebih dahulu, lalu Kerja Sama.</li>
+        <li>SKS lebih: 6 SKS pertama dibayar 100%, 4 SKS berikutnya 50%, selebihnya tidak dibayar (0%).</li>
+        <li>Bruto = (SKS lebih 100% + SKS lebih 50% × 0,5) × tarif per SKS. Pajak sesuai golongan, netto = bruto − pajak.</li>
+      </ol>
     </section>
     <p class="note">Periode {{ periodeAktif }} · {{ detail.pajakKet }}.</p>
   </template>
@@ -119,4 +137,9 @@ function kembali() {
 .tbl tbody td { height: 58px; }
 .kosong { color: #77776f; }
 .note { font-size: 14px; color: #77776f; }
+.rumus { margin-top: 20px; padding: 14px 16px; }
+.rumus h2 { font-size: 18px; font-weight: 500; margin: 0 0 8px; }
+.alur { margin: 0; padding-left: 20px; display: grid; gap: 4px; font-size: 14px; }
+.rumus small, .tbl small { color: #555; font-size: 12px; }
+.rumus-sel { white-space: nowrap; }
 </style>

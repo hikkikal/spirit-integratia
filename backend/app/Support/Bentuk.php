@@ -125,4 +125,91 @@ final class Bentuk
             'aturan' => array_column(array_map(fn ($a) => (array) $a, $aturan), 'nilai', 'kunci'),
         ];
     }
+
+    // ---------- Admin Input dan Admin Super ----------
+
+    /** Harus sama dengan JABATAN_OPSI di frontend (src/data/admin.js). Nanti diganti tabel referensi. */
+    public const JABATAN_OPSI = [
+        'Guru Besar IV/d - Pembina Utama Madya', 'Guru Besar IV/e - Pembina Utama',
+        'Lektor Kepala IV/a - Pembina', 'Lektor Kepala IV/b - Pembina Tingkat I',
+        'Lektor III/c - Penata', 'Lektor III/d - Penata Tingkat I',
+        'Asisten Ahli III/a - Penata Muda', 'Asisten Ahli III/b - Penata Muda Tingkat I',
+    ];
+
+    public const LABEL_PERAN = ['dosen' => 'Dosen', 'keuangan' => 'Keuangan', 'pimpinan' => 'Pimpinan', 'admin' => 'Admin Input', 'admin_super' => 'Admin Super'];
+
+    private const BULAN = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+
+    /** "25 Okt 2026, 20:58" dalam WIB. */
+    public static function stempel(?string $waktu): string
+    {
+        if ($waktu === null || $waktu === '') {
+            return '-';
+        }
+        $t = (new \DateTimeImmutable($waktu))->setTimezone(new \DateTimeZone('Asia/Jakarta'));
+        return sprintf('%02d %s %d, %s', (int) $t->format('j'), self::BULAN[(int) $t->format('n') - 1], (int) $t->format('Y'), $t->format('H:i'));
+    }
+
+    public static function durasi(?int $detik): string
+    {
+        $d = max(0, (int) $detik);
+        if ($d < 60) {
+            return "$d detik";
+        }
+        return intdiv($d, 60) . ' menit' . ($d % 60 ? ' ' . ($d % 60) . ' detik' : '');
+    }
+
+    public static function kodeDariFrontend(string $kode): string
+    {
+        return $kode === 'admin' ? 'admin_input' : $kode;
+    }
+
+    public static function tarifAdmin(object $t): array
+    {
+        return ['id' => (int) $t->id_tarif, 'jenis' => $t->jenis_kelas, 'kelas' => $t->nama_kelas, 'jabatan' => $t->jabatan,
+                'honor' => (int) $t->tarif_per_sks, 'mulai' => $t->berlaku_mulai, 'sampai' => $t->berlaku_sampai];
+    }
+
+    public static function perdir(object $d): array
+    {
+        return ['id' => (int) $d->id_dokumen, 'nomor' => $d->nomor, 'judul' => $d->tentang, 'tanggal' => $d->tanggal,
+                'berkas' => $d->nama_file_asli, 'berlaku' => (bool) $d->berlaku];
+    }
+
+    public static function koneksi(?object $terakhir): array
+    {
+        return ['status' => ($terakhir === null || $terakhir->status === 'berhasil') ? 'Terhubung' : 'Gagal',
+                'layanan' => 'SISTER Web Service', 'metode' => 'API (REST)',
+                'terakhir' => self::stempel($terakhir->mulai ?? null), 'dijalankan' => $terakhir->oleh ?? '-'];
+    }
+
+    /** Log rinci satu sinkronisasi, bentuknya sama dengan buatLog() di frontend. */
+    public static function logSinkron(object $run, array $endpoint, array $atribut): array
+    {
+        $per = [];
+        foreach ($atribut as $a) {
+            $per[$a->no][] = ['nama' => $a->nama, 'status' => $a->status];
+        }
+        $ep = array_map(fn ($e) => ['no' => (int) $e->no, 'nama' => $e->nama, 'path' => $e->path, 'status' => $e->status,
+            'detik' => $e->detik === null ? null : (float) $e->detik, 'rekord' => (int) $e->rekord, 'keterangan' => $e->keterangan ?? '',
+            'atributStatus' => $per[$e->no] ?? []], $endpoint);
+        $ok = array_filter($ep, fn ($e) => $e['status'] === 'berhasil');
+        return ['id' => $run->id_sinkron, 'mulai' => self::stempel($run->mulai), 'durasi' => self::durasi($run->durasi_detik),
+            'semester' => $run->label ? "{$run->label} ({$run->id_smt})" : '-', 'status' => $run->status,
+            'endpointBerhasil' => count($ok), 'endpointTotal' => count($ep), 'totalRekord' => array_sum(array_column($ok, 'rekord')),
+            'endpoint' => $ep, 'pesanGagal' => $run->pesan_gagal ?? ''];
+    }
+
+    public static function pengguna(object $u): array
+    {
+        $roles = $u->roles === '' ? [] : array_map([self::class, 'kodeKeFrontend'], explode(',', $u->roles));
+        return ['nip' => $u->username, 'nama' => $u->nama, 'email' => $u->email ?? '', 'roles' => $roles,
+                'aktif' => (bool) $u->status_aktif, 'loginTerakhir' => self::stempel($u->login_terakhir)];
+    }
+
+    public static function logAktivitas(object $l): array
+    {
+        return ['waktu' => self::stempel($l->waktu), 'nama' => $l->nama ?? 'Tidak dikenal', 'role' => self::LABEL_PERAN[$l->peran ?? ''] ?? '-',
+                'aksi' => $l->aksi, 'status' => $l->status === 'berhasil' ? 'Berhasil' : 'Gagal'];
+    }
 }

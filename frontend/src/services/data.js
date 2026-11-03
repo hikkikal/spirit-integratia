@@ -1,6 +1,6 @@
 // Lapisan data tunggal untuk halaman. Mode tiruan (VITE_USE_MOCK=true) memakai src/data/*;
 // mode API memanggil backend Laravel. Bentuk hasilnya SAMA di kedua mode, jadi halaman tidak peduli.
-import { api, USE_MOCK } from './api.js'
+import { api, API_URL, USE_MOCK } from './api.js'
 import { periodeOptions, jurusan as jurusanMock, honorTerverifikasi as verifMock, dosen as dosenMock, detailKelas, laporanJurusan, TARIF_KERJA_SAMA } from '../data/mock.js'
 import { profil as profilMock, riwayat as riwayatMock, kelasPeriode, mingguPeriode, TARIF_REGULER } from '../data/dosen.js'
 import { hitungBaris, hitungHonor } from '../lib/honor.js'
@@ -33,7 +33,7 @@ export async function getDetailHonor(id, periode) {
     const d = dosenMock.find((x) => x.id === (id || 'B'))
     return {
       id: d.id, nama: d.nama, jabatan: d.jabatan, golongan: d.golongan, status: d.status,
-      sksWajib: d.sksWajib, sksLebih: d.sksLebih,
+      sksWajib: d.sksWajib, sksLebih: d.sksLebih, sksTerlaksana: d.sksTerlaksana,
       tarifReguler: det.tarifReguler, tarifKerjaSama: TARIF_KERJA_SAMA, pajakKet: 'pajak 5% (sementara, belum dikonfirmasi)',
       kelas: det.kelas.map((k) => ({ ...k, ...hitungBaris(k, det.tarifReguler) })),
     }
@@ -48,7 +48,8 @@ export async function getDetailHonor(id, periode) {
     id, nama: h.nama, jabatan: (profil?.jabatan ?? '-').replace(/\s*\(Gol[^)]*\)\s*$/, ''), golongan: h.golongan ?? '-', status: h.status,
     sksWajib: h.sksWajib, sksLebih: h.sksLebih, tarifReguler: h.tarifReguler, tarifKerjaSama: h.tarifKerjaSama,
     pajakKet: 'pajak sesuai golongan (sementara, belum dikonfirmasi)',
-    kelas: h.kelas.map((k) => ({ mk: k.mk, jenis: k.jenis, wajib: k.wajib, lebih100: k.lebih100, lebih50: k.lebih50, lebih0: k.lebih0, subtotal: k.bruto, pajak: k.pajak, honor: k.netto })),
+    sksTerlaksana: h.sksTerlaksana,
+    kelas: h.kelas.map((k) => ({ mk: k.mk, jenis: k.jenis, sks: k.sks, tarif: k.tarif, wajib: k.wajib, lebih100: k.lebih100, lebih50: k.lebih50, lebih0: k.lebih0, subtotal: k.bruto, pajak: k.pajak, honor: k.netto })),
   }
 }
 
@@ -75,6 +76,13 @@ export async function getRincianDosen(id, periode) {
 export async function verifikasi(id, periode) {
   if (USE_MOCK) return
   await api(`/data-honor/${id}/verifikasi?periode=${encodeURIComponent(periode)}`, { method: 'POST' })
+}
+
+// Hitung ulang honor satu periode di server (peran keuangan). Yang sudah terverifikasi/terkunci dilewati.
+// Mengembalikan { periode, dihitung, dilewati: {disesuaikan, terverifikasi, terkunci}, bruto, tanpaTarif: [] }.
+export async function hitungUlang(periode) {
+  if (USE_MOCK) return { periode, dihitung: 0, dilewati: { disesuaikan: 0, terverifikasi: 0, terkunci: 0 }, bruto: 0, tanpaTarif: [] }
+  return (await api(`/hitung-honor?periode=${encodeURIComponent(periode)}`, { method: 'POST' })).data
 }
 
 // ---- Dosen (milik sendiri) ----
@@ -107,6 +115,37 @@ export async function getProfilSaya() {
 export async function getTarif() {
   if (USE_MOCK) return null
   return (await api('/tarif')).data
+}
+
+// Dokumen dasar tarif (Perdir/Kepdir). Mode mock: daftar contoh tanpa berkas.
+export async function getDokumenReferensi() {
+  if (USE_MOCK) {
+    return [
+      { id: 1, nomor: 'Kepdir No. 638/2026', judul: 'Honorarium kelebihan SKS', tanggal: null, berkas: null, adaBerkas: false, berlaku: true },
+      { id: 2, nomor: 'Perdir No. 11/2025', judul: 'Peraturan Direktur terkait honorarium', tanggal: null, berkas: null, adaBerkas: false, berlaku: true },
+    ]
+  }
+  return (await api('/dokumen-referensi')).data
+}
+
+// Buka PDF di tab baru. Berkas dilindungi sesi, jadi diambil dengan cookie lalu dibuka sebagai blob.
+export async function bukaDokumen(id) {
+  const tab = window.open('', '_blank')   // dibuka sekarang agar tidak diblokir pop-up
+  try {
+    const res = await fetch(`${API_URL}/api/dokumen-referensi/${id}/berkas`, { credentials: 'include', headers: { Accept: 'application/pdf' } })
+    if (!res.ok) {
+      let msg = `Dokumen tidak dapat dibuka (${res.status}).`
+      try { msg = (await res.json()).message || msg } catch { /* bukan JSON */ }
+      throw new Error(msg)
+    }
+    const url = URL.createObjectURL(await res.blob())
+    if (tab) tab.location.href = url
+    else window.location.href = url
+    setTimeout(() => URL.revokeObjectURL(url), 60_000)
+  } catch (e) {
+    if (tab) tab.close()
+    throw e
+  }
 }
 
 export { TARIF_REGULER, hitungHonor }
