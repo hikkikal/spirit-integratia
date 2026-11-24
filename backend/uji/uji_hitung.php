@@ -35,6 +35,22 @@ cek('nilai berbeda untuk jabatan yang sama (ambigu) -> tarif umum', H::pilihTari
 cek('tarif kedaluwarsa tidak dipakai -> tarif umum', H::pilihTarif($tr, 'Reguler', 'Lektor', 'III', '2027-02-01')['sumber'] === 'umum');
 cek('"Lektor" tidak salah cocok dengan "Lektor Kepala IV/a"', H::pilihTarif([(object) ['id_tarif' => 9, 'jenis_kelas' => 'Reguler', 'jabatan' => 'Lektor Kepala IV/a - Pembina', 'tarif_per_sks' => 1, 'berlaku_mulai' => null, 'berlaku_sampai' => null]], 'Reguler', 'Lektor', 'III', '2026-09-01') === null);
 
+echo "Aturan Perdir 11/2025 (tanpa database)\n";
+// reguler 130rb, kerja sama 250rb. Wajib 4: reguler 10 SKS + kerja sama 6 SKS => lebih 12 SKS.
+$r = H::hitung([['id' => 'r', 'sks' => 1000, 'jenis' => 'Reguler'], ['id' => 'k', 'sks' => 600, 'jenis' => 'Kerja Sama']], 400, 600, 400, 0, $t130);
+$byId = array_column($r['detail'], null, 'id_pengajaran');
+cek('kerja sama (tarif tertinggi) mendapat 100% lebih dulu: 6 SKS x 250.000 = 1.500.000', $byId['k']['s100'] === 600 && $byId['k']['bruto'] === 1500000 && $byId['k']['wajib'] === 0, $byId['k']);
+cek('wajib dipenuhi dari kelas reguler (tarif terendah); sisa reguler 6 SKS: 4 SKS 50%, 2 SKS tidak dibayar', $byId['r']['wajib'] === 400 && $byId['r']['s100'] === 0 && $byId['r']['s50'] === 400 && $byId['r']['s0'] === 200 && $byId['r']['bruto'] === 260000, $byId['r']);
+cek('total honor 1.760.000 (urutan lama, reguler dulu, hanya 1.280.000)', $r['total']['bruto'] === 1760000, $r['total']);
+cek('urutan detail: tarif tertinggi di atas', $r['detail'][0]['id_pengajaran'] === 'k');
+$r = H::hitung([['id' => 'r', 'sks' => 800, 'jenis' => 'Reguler'], ['id' => 'k', 'sks' => 800, 'jenis' => 'Kerja Sama']], 1000, 600, 400, 0, $t130);
+cek('wajib 10, reguler 8 + kerja sama 8: wajib habis di reguler 8 + kerja sama 2; lebih 6 SKS kerja sama 100%', $r['total']['wajib'] === 1000 && $r['total']['s100'] === 600 && $r['total']['bruto'] === 1500000, $r['total']);
+cek('kelompokWajib: tanpa tugas tambahan = dosen biasa', H::kelompokWajib([], []) === ['ds', null]);
+cek('kelompokWajib: tugas terpetakan -> dt2', H::kelompokWajib(['ketua jurusan'], ['ketua jurusan' => 2]) === ['dt2', null]);
+cek('kelompokWajib: tugas belum dipetakan -> null + alasan, tidak ditebak', H::kelompokWajib(['kepala unit kerja'], []) [0] === null && str_contains(H::kelompokWajib(['kepala unit kerja'], [])[1], 'kepala unit kerja'));
+cek('kelompokWajib: dua kelompok berbeda -> null', H::kelompokWajib(['a', 'b'], ['a' => 2, 'b' => 3])[0] === null);
+cek('kelompokWajib: dua tugas satu kelompok -> kelompok itu', H::kelompokWajib(['a', 'b'], ['a' => 3, 'b' => 3]) === ['dt3', null]);
+
 echo "Database (dibatalkan di akhir)\n";
 $pdo->beginTransaction();
 $ambil = function () use ($baca) {
@@ -49,20 +65,32 @@ $statusAsli = $baca("SELECT id_dosen, id_smt, status_verifikasi, diverifikasi_ol
 // (1) tanpa tarif per jabatan, semua draf: hasil harus SAMA dengan seed (skrip Python)
 $tulis("UPDATE master_tarif SET aktif = false WHERE jabatan IS NOT NULL");
 $tulis("UPDATE perhitungan SET status_verifikasi = 'draf', diverifikasi_oleh = NULL, diverifikasi_pada = NULL");
-$tot = 0; foreach ($smts as $s) { $h = H::hitungPeriode($baca, $tulis, $s); $tot += $h['dihitung']; }
+$tot = 0; $semuaNilai = []; foreach ($smts as $s) { $h = H::hitungPeriode($baca, $tulis, $s); $tot += $h['dihitung']; $semuaNilai[] = $h; }
 [$p1, $d1] = $ambil();
-cek('menghitung 76 dosen-periode', $tot === 76 && count($p1) === 76, [$tot, count($p1)]);
-$beda = 0; $contoh = null;
-foreach ($p0 as $k => $a) { $b = $p1[$k] ?? null; if ($b === null || $a !== $b) { $beda++; $contoh ??= [$a, $b]; } }
-cek('ringkasan 76 perhitungan IDENTIK dengan hasil seed (SKS, bruto, pajak, netto, sumber wajib)', $beda === 0, $contoh);
-$bedaD = 0; $contohD = null;
-foreach ($d0 as $k => $a) { $b = $d1[$k] ?? null; if ($b === null || $a !== $b) { $bedaD++; $contohD ??= [$a, $b]; } }
-cek('388 baris detail kelas IDENTIK dengan seed (urutan, 100/50/0, tarif, pajak)', $bedaD === 0 && count($d1) === 388, [$bedaD, count($d1), $contohD]);
+$ada = (int) $one("SELECT count(*) AS n FROM (SELECT DISTINCT id_dosen, id_smt FROM pengajaran) x")->n;
+cek('semua dosen-periode yang punya pengajaran dihitung', $tot === $ada && count($p1) === $ada && $ada > 0, [$tot, count($p1), $ada]);
+$salah = array_filter($p1, fn ($r) => $r['sumber_sks_wajib'] !== 'manual' && abs($r['w'] - 10) > 0.001);
+cek('tanpa tugas tambahan, SKS wajib semua dosen = 10 (Perdir 11/2025), bukan 12', $salah === [], array_slice($salah, 0, 2));
 $idDosenB = $one("SELECT id_dosen FROM dosen WHERE nama_sdm = 'Dosen B'")->id_dosen;
 $b = $one("SELECT sks_wajib::float AS w, sumber_sks_wajib, bruto, pajak, netto FROM perhitungan WHERE id_dosen = :i AND id_smt = '20252'", ['i' => $idDosenB]);
 cek('Dosen B: wajib manual 10 dipertahankan; bruto 1.040.000, pajak 52.000, netto 988.000', $b->w == 10 && $b->sumber_sks_wajib === 'manual' && $b->bruto == 1040000 && $b->pajak == 52000 && $b->netto == 988000, $b);
 [$pa] = $ambil(); H::hitungPeriode($baca, $tulis, '20252'); [$pb] = $ambil();
 cek('hitung ulang dua kali menghasilkan angka yang sama (idempoten)', $pa === $pb);
+
+// (1b) dosen struktural: tugas tambahan + tabel pemetaan
+$dx = $one("SELECT id_dosen FROM perhitungan WHERE id_smt = '20252' AND sumber_sks_wajib <> 'manual' AND id_dosen <> :b LIMIT 1", ['b' => $idDosenB])->id_dosen;
+$wajibDx = fn () => $one("SELECT sks_wajib::float AS w, sumber_sks_wajib FROM perhitungan WHERE id_dosen = :i AND id_smt = '20252'", ['i' => $dx]);
+$tulis("INSERT INTO tugas_tambahan_dosen (id_tugas, id_dosen, jenis_tugas, tanggal_mulai) VALUES (gen_random_uuid(), :i, 'Kepala Unit Kerja', '2025-01-01')", ['i' => $dx]);
+$h = H::hitungPeriode($baca, $tulis, '20252');
+cek('tugas belum dipetakan: dosen tidak dihitung, dilaporkan perlu ditentukan (tidak ditebak)', count(array_filter($h['perlu_ditentukan'], fn ($r) => str_contains($r, 'kepala unit kerja'))) === 1, $h['perlu_ditentukan']);
+$tulis("INSERT INTO pemetaan_tugas_tambahan (jenis_tugas, kelompok) VALUES ('kepala unit kerja', 2)");
+H::hitungPeriode($baca, $tulis, '20252');
+$w = $wajibDx();
+cek('tugas dipetakan ke kelompok 2: SKS wajib 5, sumber tugas_tambahan', $w->w == 5 && $w->sumber_sks_wajib === 'tugas_tambahan', $w);
+$tulis("UPDATE tugas_tambahan_dosen SET tanggal_selesai = '2025-12-31' WHERE id_dosen = :i", ['i' => $dx]);
+H::hitungPeriode($baca, $tulis, '20252');
+$w = $wajibDx();
+cek('tugas sudah berakhir sebelum tanggal acuan: kembali dosen biasa, SKS wajib 10', $w->w == 10 && $w->sumber_sks_wajib === 'default', $w);
 
 // (2) tarif per jabatan (data Admin Input) ikut berpengaruh
 $tulis("UPDATE master_tarif SET aktif = true WHERE jabatan IS NOT NULL");

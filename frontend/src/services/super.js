@@ -29,8 +29,14 @@ export async function ubahStatusPengguna(nip, aktif) {
 }
 
 // hari: 7 | 30 | 0 (semua). status: '' | 'Berhasil' | 'Gagal'. Pencarian nama dilakukan server (mode API).
-export async function getLogAktivitas({ hari = 7, status = '', q = '' } = {}) {
-  if (!USE_MOCK) return (await api('/admin-super/log', { query: { hari, status, q } })).data
+export async function getLogAktivitas({ hari = 7, status = '', q = '', aksi = '' } = {}) {
+  if (!USE_MOCK) return (await api('/admin-super/log', { query: { hari, status, q, aksi } })).data
   const cari = q.trim().toLowerCase()
-  return logList.filter((l) => (!cari || l.nama.toLowerCase().includes(cari)) && (!status || l.status === status)).map((l) => ({ ...l }))
+  return logList.filter((l) => (!cari || l.nama.toLowerCase().includes(cari)) && (!status || l.status === status) && (!aksi || l.aksi === aksi)).map((l) => ({ ...l }))
+}
+
+// Jenis aksi yang pernah tercatat, untuk pilihan filter "Aksi".
+export async function getLogAksi() {
+  if (!USE_MOCK) return (await api('/admin-super/log/aksi')).data
+  return [...new Set(logList.map((l) => l.aksi))].sort()
 }

@@ -102,12 +102,12 @@ const detik = (d) => (d == null ? '-' : String(d).replace('.', ',') + ' dtk')
 <style scoped>
 .kembali { display: inline-block; margin-bottom: 4px; color: #0b5e58; text-decoration: none; }
 .luar { padding: 28px clamp(16px, 4vw, 96px) 40px; }
-.ringkas { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 40px; background: #fff; border: 1px solid #000; border-radius: 8px; padding: 14px 20px; }
-.ringkas small { display: block; color: #666; font-size: 12px; }
-.pill { display: inline-block; border-radius: 7px; padding: 3px 14px; font-size: 14px; white-space: nowrap; }
-.pill--berhasil { background: #8dfcb3; color: #0a5928; }
+.ringkas { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 40px; background: #fff; border: 1px solid #a9bcb8; border-radius: 8px; padding: 14px 20px; }
+.ringkas small { display: block; color: #4a5755; font-size: 15px; }
+.pill { display: inline-block; border-radius: 7px; padding: 3px 14px; font-size: 15px; white-space: nowrap; }
+.pill--berhasil { background: #c8efd7; color: #0a5928; }
 .pill--gagal { background: #fdc5c5; color: #b42318; }
-.pill--dilewati { background: #d9d9d9; color: #666; }
+.pill--dilewati { background: #e4ecea; color: #4a5755; }
 .banner { display: flex; gap: 18px; align-items: center; margin-top: 16px; padding: 14px 24px; background: #fbcccc; border: 1px solid #e39b9b; border-radius: 8px; color: #8a2121; }
 .banner svg { width: 38px; height: 38px; flex: none; }
 .banner p { margin: 0; }
@@ -118,26 +118,26 @@ const detik = (d) => (d == null ? '-' : String(d).replace('.', ',') + ' dtk')
 .k--merah { background: #e11; }
 .k--abu { background: #c9c9c9; }
 .daftar { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; }
-.ep { background: #fff; border: 1px solid #000; border-radius: 8px; overflow: hidden; }
+.ep { background: #fff; border: 1px solid #a9bcb8; border-radius: 8px; overflow: hidden; }
 .ep__head { width: 100%; display: flex; align-items: center; gap: 18px; padding: 14px 30px; background: none; border: 0; cursor: pointer; text-align: left; }
 .ep__head:hover { background: #f7faf9; }
-.no { width: 50px; height: 50px; flex: none; border-radius: 50%; background: #d9d9d9; display: grid; place-items: center; font-size: 22px; font-weight: 600; }
+.no { width: 50px; height: 50px; flex: none; border-radius: 50%; background: #e4ecea; display: grid; place-items: center; font-size: 22px; font-weight: 600; }
 .nama { flex: 1; display: grid; min-width: 0; }
 .nama strong { font-weight: 500; }
-.nama small { color: #777; }
+.nama small { color: #4a5755; }
 .panah { width: 22px; height: 22px; transition: transform .2s; }
 .ep--buka .panah { transform: rotate(180deg); }
 .ep__isi { border-top: 1px solid #ccc; padding: 18px 40px 22px; }
-.meta { display: flex; flex-wrap: wrap; gap: 6px 36px; margin: 0 0 14px; color: #666; font-size: 13px; }
+.meta { display: flex; flex-wrap: wrap; gap: 6px 36px; margin: 0 0 14px; color: #4a5755; font-size: 15px; }
 .meta b { color: #000; font-weight: 500; }
 .kotak-gagal { background: #fbcccc; border: 1px solid #e39b9b; color: #a22; border-radius: 4px; padding: 10px 14px; margin: 0 0 14px; }
-.sub { font-size: 13px; margin: 0 0 12px; }
+.sub { font-size: 15px; margin: 0 0 12px; }
 .atribut { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .atribut li { display: flex; align-items: center; gap: 12px; }
 .atribut span:nth-child(2) { flex: 1; }
-.pill--atr { min-width: 86px; text-align: center; font-size: 13px; padding: 2px 12px; }
+.pill--atr { min-width: 86px; text-align: center; font-size: 15px; padding: 2px 12px; }
 .pill--atr-terambil { background: #a9c1f7; color: #1b3f9a; }
 .pill--atr-gagal { background: #fdb3b3; color: #b42318; }
-.pill--atr-dilewati { background: #dcdcdc; color: #666; }
+.pill--atr-dilewati { background: #dcdcdc; color: #4a5755; }
 @media (max-width: 700px) { .ep__head { padding: 12px 14px; gap: 10px; } .ep__isi { padding: 14px; } }
 </style>

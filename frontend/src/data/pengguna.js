@@ -5,7 +5,7 @@ export const ROLE_INFO = {
   dosen: { label: 'Dosen', ket: 'Lihat sks, rincian data, dan honor pribadi', kode: 'D' },
   keuangan: { label: 'Keuangan', ket: 'Periksa & Verifikasi Data SKS/Honorarium', kode: 'KU' },
   pimpinan: { label: 'Pimpinan', ket: 'Pantau Rekap & Kelebihan SKS/Honorarium', kode: 'PM' },
-  admin: { label: 'Admin Input', ket: 'Kelola Sinkronasi & Data Pendukung', kode: 'AI' },
+  admin: { label: 'Admin Input', ket: 'Kelola Sinkronisasi & Data Pendukung', kode: 'AI' },
   admin_super: { label: 'Admin Super', ket: 'Kelola Role & Hak Akses Pengguna', kode: 'AS' },
 }
 

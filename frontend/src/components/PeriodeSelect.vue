@@ -11,5 +11,5 @@ import { honorState } from '../stores/honor.js'
 </template>
 <style scoped>
 .psel { display: grid; gap: 4px; font-size: 16px; }
-.psel select { font: inherit; padding: 8px 14px; border: 0; border-radius: 4px; background: #d9d9d9; min-width: 190px; cursor: pointer; }
+.psel select { font: inherit; padding: 8px 14px; border: 0; border-radius: 4px; background: #e4ecea; min-width: 190px; cursor: pointer; }
 </style>

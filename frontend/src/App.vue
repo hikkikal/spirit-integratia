@@ -1,4 +1,5 @@
 <script setup>
+import KonfirmasiDialog from './components/KonfirmasiDialog.vue'
 // Fade antar area besar (login ↔ layout role). Perpindahan halaman di dalam layout ditangani AppLayout.
 </script>
 
@@ -8,4 +9,5 @@
       <component :is="Component" :key="route.matched[0]?.path ?? route.path" />
     </Transition>
   </RouterView>
+  <KonfirmasiDialog />
 </template>

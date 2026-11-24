@@ -2,27 +2,35 @@
 import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { auth, setUser, ensureUser } from '../stores/auth.js'
-import { ssoValidate } from '../services/auth.js'
+import { ssoCallback } from '../services/auth.js'
 import { homeFor } from '../lib/roles.js'
 
-// CAS mengembalikan browser ke sini dengan ?ticket=ST-... . Tiket hanya berlaku sekali, jadi langsung
+// SSO mengembalikan browser ke sini dengan ?code=...&state=... . Code hanya berlaku sekali, jadi langsung
 // dikirim ke backend dan dihapus dari alamat.
 const route = useRoute()
 const router = useRouter()
 const pesan = ref('')
 
 onMounted(async () => {
-  const ticket = typeof route.query.ticket === 'string' ? route.query.ticket : ''
+  const code = typeof route.query.code === 'string' ? route.query.code : ''
+  const state = typeof route.query.state === 'string' ? route.query.state : ''
+  const galatSso = typeof route.query.error === 'string' ? route.query.error : ''
   try {
-    if (ticket) {
-      history.replaceState(null, '', location.pathname) // jangan biarkan tiket tertinggal di riwayat browser
-      const user = await ssoValidate(ticket)
+    if (galatSso) {
+      history.replaceState(null, '', location.pathname)
+      pesan.value = galatSso === 'access_denied' ? 'Login dibatalkan.' : 'SSO PNJ menolak permintaan login.'
+      auth.loaded = true
+      return
+    }
+    if (code && state) {
+      history.replaceState(null, '', location.pathname) // jangan biarkan code tertinggal di riwayat browser
+      const user = await ssoCallback({ code, state })
       setUser(user)
       auth.loaded = true
       router.replace(homeFor(user.role))
       return
     }
-    // Tanpa tiket: mungkin sesi sudah ada.
+    // Tanpa code: mungkin sesi sudah ada.
     auth.loaded = false
     const user = await ensureUser()
     if (user) router.replace(homeFor(user.role))

@@ -1,12 +1,18 @@
-import { reactive } from 'vue'
+import { reactive, watch } from 'vue'
 import { USE_MOCK } from '../services/api.js'
 import { getPeriode, getDaftarDosen, verifikasi } from '../services/data.js'
 import { periodeOptions } from '../data/mock.js'
 
 // State bersama antar halaman Keuangan (periode terpilih, daftar dosen, kunci periode).
 // Mode API: daftar dosen dimuat dari backend per periode. Kunci periode & riwayat ekspor masih lokal (belum ada API).
+// Periode terpilih diingat di browser supaya tidak kembali ke periode awal saat halaman dimuat ulang.
+const KUNCI_PERIODE = 'integratia.periode'
+function periodeTersimpan() {
+  try { return localStorage.getItem(KUNCI_PERIODE) || null } catch { return null }
+}
+
 export const honorState = reactive({
-  periode: periodeOptions[0],
+  periode: periodeTersimpan() || periodeOptions[0],
   periodeOptions: [...periodeOptions],
   dosen: [],
   muat: false,
@@ -16,6 +22,10 @@ export const honorState = reactive({
     '10 Okt 2026 14:20 · Excel · Keuangan 1',
     '08 Okt 2026 09:05 · PDF · Keuangan 2',
   ],
+})
+
+watch(() => honorState.periode, (v) => {
+  try { if (v) localStorage.setItem(KUNCI_PERIODE, v) } catch { /* penyimpanan browser tidak tersedia: abaikan */ }
 })
 
 let janjiPeriode = null

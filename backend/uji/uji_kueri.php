@@ -128,7 +128,31 @@ cek('pengguna: 45 akun, Dosen B berperan dosen + pimpinan', count($pg) === 45 &&
 cek('log: 9 contoh + 2 hitung honor, terbaru di atas', count(sel(Kueri::LOG_AKTIVITAS, ['hari1' => 0, 'hari2' => 0, 'status1' => '', 'status2' => '', 'q1' => '', 'q2' => '', 'q3' => ''])) === 11);
 $lg2 = sel(Kueri::LOG_AKTIVITAS, ['hari1' => 7, 'hari2' => 7, 'status1' => 'gagal', 'status2' => 'gagal', 'q1' => '', 'q2' => '', 'q3' => '']);
 cek('log: filter 7 hari + status gagal', count($lg2) === 1 && Bentuk::logAktivitas($lg2[0])['status'] === 'Gagal', $lg2);
+// Non-pengajaran
+$smtNp = '20261';
+$np = Bentuk::npDaftar(sel(Kueri::NP_DAFTAR, ['smt' => $smtNp, 'jur1' => '', 'jur2' => '', 'jn1' => '', 'jn2' => '', 'jn3' => '', 'q1' => '', 'q2' => '', 'q3' => '']));
+cek('non-pengajaran: 8 dosen, 3 menunggu verifikasi', count($np) === 8 && count(array_filter($np, fn ($d) => $d['status'] === 'menunggu')) === 3);
+$npB = array_values(array_filter($np, fn ($d) => $d['nama'] === 'Dosen B'))[0] ?? null;
+cek('non-pengajaran: Dosen B 5 kegiatan Rp2.420.000, jenis berupa daftar', $npB && $npB['jumlahKegiatan'] === 5 && $npB['honor'] === 2420000 && in_array('Skripsi', $npB['jenis'], true), $npB);
+$npF = sel(Kueri::NP_DAFTAR, ['smt' => $smtNp, 'jur1' => '', 'jur2' => '', 'jn1' => 'Tesis', 'jn2' => 'Tesis', 'jn3' => 'Tesis', 'q1' => '', 'q2' => '', 'q3' => '']);
+cek('non-pengajaran: filter jenis Tesis -> 1 dosen', count($npF) === 1);
+$npD = Bentuk::npDetail(Bentuk::profil(one(Kueri::PROFIL, ['id' => $npB['id']])), one(Kueri::NP_STATUS, ['id' => $npB['id'], 'smt' => $smtNp])->status_verifikasi ?? null, sel(Kueri::NP_KEGIATAN, ['id' => $npB['id'], 'smt' => $smtNp]));
+cek('non-pengajaran: detail 5 baris, total 2.420.000, terverifikasi', count($npD['kegiatan']) === 5 && $npD['totalHonor'] === 2420000 && $npD['status'] === 'terverifikasi');
+$idF = array_values(array_filter($np, fn ($d) => $d['status'] === 'menunggu'))[0]['id'];
+$bind = ['id1' => $idF, 'id2' => $idF, 'smt1' => $smtNp, 'smt2' => $smtNp, 'pengguna' => one("SELECT id_user FROM users WHERE username = 'keuangan'")->id_user];
+$st = $pdo->prepare(Kueri::NP_VERIFIKASI); $st->execute($bind);
+cek('non-pengajaran: verifikasi pertama 1 baris', $st->rowCount() === 1);
+$st->execute($bind);
+cek('non-pengajaran: verifikasi ulang 0 baris (ditolak)', $st->rowCount() === 0);
 $pdo->rollBack();
+
+
+echo "Simpulan asesor dan program studi per kelas\n";
+cek('data honor membawa simpulan asesor dari BKD akhir', count(array_filter($dh, fn ($r) => ($r['simpulan'] ?? null) !== null)) > 0 && array_key_exists('simpulan', $dh[0]), $dh[0]);
+$npd = Bentuk::npDaftar(sel(Kueri::NP_DAFTAR, ['smt' => '20261', 'jur1' => '', 'jur2' => '', 'jn1' => '', 'jn2' => '', 'jn3' => '', 'q1' => '', 'q2' => '', 'q3' => '']));
+cek('daftar non-pengajaran membawa kunci simpulan', $npd !== [] && array_key_exists('simpulan', $npd[0]), $npd[0] ?? null);
+$dk = Bentuk::detailHonor(one(Kueri::PERHITUNGAN, ['id' => $id, 'smt' => '20252']), sel(Kueri::DETAIL_KELAS, ['id' => $id, 'smt' => '20252']), sel(Kueri::TARIF_AKTIF));
+cek('detail honor: setiap kelas punya program studi + jenjang', count(array_filter($dk['kelas'], fn ($k) => preg_match('/\((D3|D4|S2)\)$/', (string) $k['prodi']))) === count($dk['kelas']), $dk['kelas'][0] ?? null);
 
 echo $gagal === 0 ? "\nSEMUA UJI LOLOS\n" : "\n$gagal UJI GAGAL\n";
 exit($gagal === 0 ? 0 : 1);

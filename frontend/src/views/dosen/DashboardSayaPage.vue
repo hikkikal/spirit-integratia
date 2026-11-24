@@ -79,7 +79,7 @@ const sksKelas = computed(() => kelas.value.reduce((a, k) => a + k.sks, 0))
     <p v-if="!kelas.length" class="kosong">Rincian kelas periode ini belum tersedia.</p>
     <div v-else class="scroll-x">
       <table class="tbl tbl--line">
-        <thead><tr><th>Mata kuliah</th><th>Kelas</th><th>Prodi</th><th>SKS</th><th>Sumber di LKD</th></tr></thead>
+        <thead><tr><th>Mata kuliah</th><th>Kelas</th><th>Prodi</th><th>SKS</th><th>Sumber (LKD)</th></tr></thead>
         <tbody>
           <tr v-for="k in kelas" :key="k.mk">
             <td>{{ k.mk }}</td><td>{{ k.kelas }}</td><td>{{ k.prodi }}</td><td>{{ k.sks }}</td><td>{{ k.sumber }}</td>
@@ -96,6 +96,6 @@ const sksKelas = computed(() => kelas.value.reduce((a, k) => a + k.sks, 0))
 .cards { grid-template-columns: repeat(4, 1fr); margin-bottom: 16px; }
 .block { margin-bottom: 16px; }
 .tot td { font-weight: 700; }
-.kosong { color: #77776f; }
+.kosong { color: #4a5755; }
 @media (max-width: 900px) { .cards { grid-template-columns: repeat(2, 1fr); } }
 </style>

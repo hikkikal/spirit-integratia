@@ -1,6 +1,6 @@
 import { api } from './api.js'
 
-// "sso"  = produksi: login lewat CAS PNJ, divalidasi backend Laravel.
+// "sso"  = produksi: login lewat SSO PNJ (OpenID Connect), diselesaikan backend Laravel.
 // "dev"  = pengembangan dengan backend lokal: pilih peran, backend membuat sesi (hanya APP_ENV=local).
 // "mock" = pengembangan: form tiruan, tanpa backend dan tanpa password sungguhan.
 const MODE = import.meta.env.VITE_AUTH_MODE
@@ -22,20 +22,18 @@ export async function loginLokal({ username, password }) {
   }
 }
 
-// Alamat CAS PNJ. Layanan SSO hanya terdaftar untuk http://localhost:8081, jadi CAS mengembalikan
-// browser ke FRONTEND (/auth/callback?ticket=...), lalu frontend meneruskan tiket ke backend.
-export const CAS_URL = (import.meta.env.VITE_CAS_URL || 'https://dev-id.pnj.ac.id/cas').replace(/\/$/, '')
-// `service` harus sama persis dengan CAS_SERVICE_URL di .env backend.
-export const casService = () => `${location.origin}/auth/callback`
-
-// Mode SSO: browser dialihkan ke halaman login CAS. Password diketik di CAS, tidak di aplikasi ini.
-export function startSso() {
-  location.assign(`${CAS_URL}/login?service=${encodeURIComponent(casService())}`)
+// Mode SSO (OpenID Connect, Authorization Code + PKCE): backend menyiapkan state/nonce/PKCE dan memberi alamat login SSO PNJ.
+// Password diketik di halaman SSO, tidak di aplikasi ini. Setelah login, SSO mengembalikan browser ke
+// {alamat frontend}/auth/callback?code=...&state=... (alamat ini harus terdaftar di SSO).
+export async function startSso() {
+  const res = await api('/auth/sso/mulai', { method: 'POST', tanpaAlihan: true })
+  if (!res?.url) throw new Error('SSO tidak memberi alamat login.')
+  location.assign(res.url)
 }
 
-// Mode SSO: backend memvalidasi tiket ke CAS lalu membuat sesi (cookie). Mengembalikan { nip, name, role, roles }.
-export async function ssoValidate(ticket) {
-  return (await api('/auth/sso/validate', { method: 'POST', body: { ticket }, tanpaAlihan: true })).data
+// Mode SSO: backend menukar code dengan token, mencocokkan akun, lalu membuat sesi (cookie). Mengembalikan { nip, name, role, roles }.
+export async function ssoCallback({ code, state }) {
+  return (await api('/auth/sso/callback', { method: 'POST', body: { code, state }, tanpaAlihan: true })).data
 }
 
 // Mode SSO: ambil pengguna dari sesi cookie. Mengembalikan { nip, name, role } atau null.
@@ -58,7 +56,7 @@ export async function mockLogin({ nip, role }) {
   return { nip, name: NAMA[role] ?? 'Pengguna Demo', role, roles }
 }
 
-// Backend membalas { logout_url } (alamat logout CAS) supaya sesi SSO ikut berakhir.
+// Backend membalas { logout_url } (alamat logout SSO) supaya sesi SSO ikut berakhir.
 export async function logout() {
   if (AUTH_MODE === 'mock') return null
   const res = await api('/logout', { method: 'POST' })

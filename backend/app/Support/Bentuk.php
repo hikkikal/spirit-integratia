@@ -41,6 +41,15 @@ final class Bentuk
         ];
     }
 
+    /** Profil akun untuk semua peran: data dosen bila akun terhubung, selain itu hanya identitas akun. */
+    public static function profilAkun(object $u, ?array $dosen): array
+    {
+        $dasar = $dosen ?? ['nama' => $u->nama, 'jabatan' => null, 'jurusan' => null, 'status' => null,
+                            'statusPegawai' => null, 'email' => null, 'nidn' => null, 'nip' => null, 'nuptk' => null];
+        $dasar['email'] ??= $u->email;
+        return $dasar + ['username' => $u->username];
+    }
+
     /** @param object[] $rows */
     public static function riwayat(array $rows): array
     {
@@ -76,12 +85,13 @@ final class Bentuk
         return [
             'nama' => $p->nama, 'golongan' => self::gol($p->golongan),
             'tarifReguler' => $t['Reguler'], 'tarifKerjaSama' => $t['Kerja Sama'],
+            'catatan' => $p->catatan ?? null,
             'status' => self::status($p->status_verifikasi),
             'sksWajib' => self::angka($p->sks_wajib), 'sksTerlaksana' => self::angka($p->sks_terlaksana), 'sksLebih' => self::angka($p->sks_lebih),
             'total' => ['lebih100' => self::angka($p->sks_100), 'lebih50' => self::angka($p->sks_50), 'lebih0' => self::angka($p->sks_0),
                         'bruto' => (int) $p->bruto, 'pajak' => (int) $p->pajak, 'netto' => (int) $p->netto],
             'kelas' => array_map(fn ($k) => [
-                'no' => (int) $k->no, 'mk' => "{$k->mk} ({$k->kelas})", 'jenis' => $k->jenis_kelas, 'sks' => self::angka($k->sks_kelas),
+                'no' => (int) $k->no, 'mk' => "{$k->mk} ({$k->kelas})", 'prodi' => $k->prodi === null ? null : trim($k->prodi . ($k->jenjang ? " ({$k->jenjang})" : '')), 'jenis' => $k->jenis_kelas, 'sks' => self::angka($k->sks_kelas),
                 'wajib' => self::angka($k->sks_wajib_terpakai), 'lebih100' => self::angka($k->sks_100), 'lebih50' => self::angka($k->sks_50),
                 'lebih0' => self::angka($k->sks_0), 'tarif' => (int) $k->tarif_per_sks,
                 'bruto' => (int) $k->bruto, 'pajak' => (int) $k->pajak, 'netto' => (int) $k->netto,
@@ -96,11 +106,12 @@ final class Bentuk
             'id' => $r->id_dosen, 'nama' => $r->nama, 'jurusan' => $r->jurusan, 'jabatan' => $r->jabatan, 'golongan' => self::gol($r->golongan),
             'sksWajib' => self::angka($r->sks_wajib), 'sksTerlaksana' => self::angka($r->sks_terlaksana), 'sksLebih' => self::angka($r->sks_lebih),
             'honor' => (int) $r->bruto, 'pajak' => (int) $r->pajak, 'netto' => (int) $r->netto, 'status' => self::status($r->status_verifikasi),
+            'simpulan' => $r->simpulan, 'catatan' => $r->catatan ?? null, 'flag' => Perhatian::flagPengajaran($r->catatan ?? null),
         ], $rows);
     }
 
     /** Padanan `jurusan` dan `laporanJurusan` di mock.js, ditambah total. */
-    public static function dashboard(array $rows, int $honorTerverifikasi = 0): array
+    public static function dashboard(array $rows, int $honorTerverifikasi = 0, ?object $np = null, array $perhatian = []): array
     {
         $jur = array_map(fn ($r) => [
             'nama' => $r->jurusan, 'dosen' => (int) $r->jumlah_dosen, 'terverifikasi' => (int) $r->terverifikasi,
@@ -113,6 +124,11 @@ final class Bentuk
             'jurusan' => $jur,
             'total' => ['dosen' => $sum('dosen'), 'terverifikasi' => $sum('terverifikasi'), 'menunggu' => $sum('menunggu'),
                         'sksLebih' => self::angka($sum('sksLebih')), 'honor' => $sum('honor'), 'pajak' => $sum('pajak'), 'netto' => $sum('netto')],
+            'nonPengajaran' => $np === null ? null : [
+                'dosen' => (int) $np->dosen, 'terverifikasi' => (int) $np->terverifikasi, 'honorTerverifikasi' => (int) $np->bruto_verif,
+                'honorBelum' => (int) $np->bruto - (int) $np->bruto_verif, 'bruto' => (int) $np->bruto, 'pajak' => (int) $np->pajak, 'netto' => (int) $np->netto,
+            ],
+            'perhatian' => $perhatian,
         ];
     }
 
@@ -123,6 +139,33 @@ final class Bentuk
                 'berlakuMulai' => $t->berlaku_mulai, 'dokumen' => $t->dokumen, 'tentang' => $t->tentang], $tarif),
             'pajak' => array_map(fn ($p) => ['golongan' => $p->golongan, 'tarif' => (float) $p->tarif_pph, 'catatan' => $p->catatan], $pajak),
             'aturan' => array_column(array_map(fn ($a) => (array) $a, $aturan), 'nilai', 'kunci'),
+        ];
+    }
+
+    // ---------- Non-pengajaran ----------
+
+    public static function npDaftar(array $rows): array
+    {
+        return array_map(fn ($r) => [
+            'id' => $r->id_dosen, 'nama' => $r->nama, 'jabatan' => $r->jabatan, 'jurusan' => $r->jurusan,
+            'jumlahKegiatan' => (int) $r->jumlah_kegiatan, 'jenis' => $r->jenis_gabung === null ? [] : explode('|', $r->jenis_gabung),
+            'honor' => $r->bruto === null ? null : (int) $r->bruto, 'status' => $r->status_verifikasi === 'terverifikasi' ? 'terverifikasi' : 'menunggu',
+            'simpulan' => $r->simpulan, 'flag' => ($r->flag ?? '') === '' ? [] : explode(',', $r->flag),
+        ], $rows);
+    }
+
+    /** Detail satu dosen: profil singkat (dari Bentuk::profil), status, dan daftar kegiatan. */
+    public static function npDetail(array $profil, ?string $status, array $kegiatan): array
+    {
+        $daftar = array_map(fn ($k) => [
+            'no' => (int) $k->urutan, 'judul' => $k->judul, 'jenis' => $k->jenis, 'kategori' => $k->kategori,
+            'prodi' => $k->program_studi, 'kampus' => $k->perguruan_tinggi, 'honor' => $k->honor_bruto === null ? null : (int) $k->honor_bruto,
+            'jumlahMhs' => (int) ($k->jumlah_mhs ?? 1), 'detail' => isset($k->detail) ? json_decode($k->detail, true) : null, 'statBkd' => $k->stat_bkd, 'catatan' => $k->catatan ?? null,
+        ], $kegiatan);
+        return [
+            'nama' => $profil['nama'], 'jabatan' => $profil['jabatan'], 'jurusan' => $profil['jurusan'],
+            'status' => $status === 'terverifikasi' ? 'terverifikasi' : 'menunggu',
+            'totalKegiatan' => count($daftar), 'totalHonor' => ($ada = array_filter(array_column($daftar, 'honor'), fn ($h) => $h !== null)) ? array_sum($ada) : null, 'kegiatan' => $daftar,
         ];
     }
 
@@ -170,6 +213,12 @@ final class Bentuk
                 'honor' => (int) $t->tarif_per_sks, 'mulai' => $t->berlaku_mulai, 'sampai' => $t->berlaku_sampai];
     }
 
+    /** Tarif honor kegiatan non-pengajaran (SBM Internal 23/2026), hanya-baca. */
+    public static function tarifNp(object $t): array
+    {
+        return ['kode' => $t->kode, 'nama' => $t->nama, 'satuan' => $t->satuan, 'golIV' => (int) $t->tarif_iv, 'golIII' => (int) $t->tarif_iii, 'keterangan' => $t->keterangan];
+    }
+
     public static function perdir(object $d): array
     {
         return ['id' => (int) $d->id_dokumen, 'nomor' => $d->nomor, 'judul' => $d->tentang, 'tanggal' => $d->tanggal,
@@ -210,6 +259,6 @@ final class Bentuk
     public static function logAktivitas(object $l): array
     {
         return ['waktu' => self::stempel($l->waktu), 'nama' => $l->nama ?? 'Tidak dikenal', 'role' => self::LABEL_PERAN[$l->peran ?? ''] ?? '-',
-                'aksi' => $l->aksi, 'status' => $l->status === 'berhasil' ? 'Berhasil' : 'Gagal'];
+                'aksi' => $l->aksi, 'keterangan' => $l->objek ?? '', 'status' => $l->status === 'berhasil' ? 'Berhasil' : 'Gagal'];
     }
 }

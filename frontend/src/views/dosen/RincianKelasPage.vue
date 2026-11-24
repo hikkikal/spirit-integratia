@@ -37,13 +37,14 @@ watch(periode, muatKelas)
 const base = useBase()
 // Detail dibuka dari halaman ini, jadi tombol Kembali di sana kembali ke sini (periode tetap).
 const detailTo = () => ({ path: `${base}/detail`, query: { periode: periode.value } })
+const pertemuanTo = (m) => ({ path: `${base}/rincian/pertemuan`, query: { periode: periode.value, ...(m ? { minggu: m.no } : {}) } })
 </script>
 
 <template>
   <p v-if="!selesai">Memuat…</p>
   <p v-else-if="!data" role="alert">{{ galat || 'Belum ada data honor untuk akun ini.' }}</p>
   <template v-else>
-  <h1 class="page-title">Halo, {{ profil.nama }}</h1>
+  <h1 class="page-title">Rincian Kelas</h1>
   <p class="page-sub">{{ profil.jabatan }} · {{ periode }}</p>
 
   <label class="field-sel sel">
@@ -54,7 +55,7 @@ const detailTo = () => ({ path: `${base}/detail`, query: { periode: periode.valu
   <RincianPeriode
     :nama="profil.nama" :jabatan="profil.jabatan" :prodi="profil.prodi" :email="profil.email"
     :total-kelas="kelas.length" :terlaksana="data.terlaksana" :wajib="data.sksWajib" :lebih="data.lebih"
-    :minggu="minggu" :detail-to="detailTo"
+    :minggu="minggu" :detail-to="detailTo" :pertemuan-to="pertemuanTo" :periode="periode"
   />
   </template>
 </template>

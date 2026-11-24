@@ -1,75 +1,53 @@
-# ==============================
-# INTEGRATIA (backend + frontend)
-# Letakkan file ini di akar folder integratia
-# ==============================
-
-# Operating systems
+# OS & Editor
 .DS_Store
-.AppleDouble
-.LSOverride
-._*
 Thumbs.db
-Thumbs.db:encryptable
-ehthumbs.db
 Desktop.ini
-$RECYCLE.BIN/
-.Trash-*
-.nfs*
+.idea/
+.vscode/
+*.swp
+*.code-workspace
 
-.sops.*
-
-# Environment files (kredensial: JANGAN di-commit)
+# Environment & Kredensial (JANGAN di-commit)
 .env
 .env.*
 !.env.example
 env.sh
+*.local
 
-# Editors and IDEs
-.idea/
-.vscode/
-.fleet/
-.project
-.classpath
-.settings/
-.buildpath
-.metadata/
-nbproject/private/
-*.sublime-workspace
-*.code-workspace
-*.swp
-*.swo
-*~
-.#*
-#*#
-
-# Paket data SISTER + dummy database (data dan skrip lokal)
+# Data Lokal, Arsip & Python Cache
 paket_data/
 raw/
 keluaran_sister/
+keluaran_sister_tersamar/
 keluaran_semua/
 keluaran_semua_tersamar/
+__pycache__/
+*.pyc
 *.zip
 *.rar
+*.sqlite*
 
 # Frontend (Vue + Vite)
 node_modules/
 dist/
 dist-ssr/
 .vite/
-*.local
+coverage/
 npm-debug.log*
-yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
-coverage/
 
 # Backend (Laravel)
 backend/vendor/
-backend/node_modules/
 backend/public/hot
+backend/public/build/
 backend/public/storage
 backend/storage/*.key
 backend/storage/pail
+backend/storage/app/perdir/*
+!backend/storage/app/perdir/.gitkeep
+backend/storage/app/private/*
+!backend/storage/app/private/.gitkeep
 backend/storage/framework/cache/*
 backend/storage/framework/sessions/*
 backend/storage/framework/views/*
@@ -81,12 +59,9 @@ backend/storage/logs/*
 backend/bootstrap/cache/*.php
 .phpunit.result.cache
 .phpunit.cache/
-Homestead.json
-Homestead.yaml
 auth.json
-
-backend/**/*.md
-frontend/**/*.md
-
-# Log
 *.log
+
+# Catatan lokal AI / patch lama (opsional)
+backend/AGENTS.md
+backend/CLAUDE.md

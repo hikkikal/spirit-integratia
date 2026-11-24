@@ -4,7 +4,7 @@ import { ROLE_INFO } from '../data/pengguna.js'
 import { simpanRole } from '../services/super.js'
 import TambahRoleModal from './TambahRoleModal.vue'
 
-// Pop-up Kelola Role: tambah dan hapus role, lalu simpan. Perubahan baru berlaku setelah disimpan.
+// Pop-up Kelola Peran: tambah dan hapus role, lalu simpan. Perubahan baru berlaku setelah disimpan.
 const props = defineProps({ pengguna: { type: Object, required: true } })
 const emit = defineEmits(['close', 'tersimpan'])
 
@@ -64,8 +64,8 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
     <section class="modal" role="dialog" aria-modal="true" aria-labelledby="kr-title">
       <header>
         <div>
-          <p class="crumb">Manajemen Pengguna › Kelola Role</p>
-          <h2 id="kr-title">Kelola Role Pengguna</h2>
+          <p class="crumb">Manajemen Pengguna › Kelola Peran</p>
+          <h2 id="kr-title">Kelola Peran Pengguna</h2>
           <p class="sub">Tambahkan atau hapus role untuk pengguna aktif, lalu simpan perubahan</p>
         </div>
         <button class="x" aria-label="Tutup" @click="emit('close')">×</button>
@@ -133,43 +133,43 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
 
 <style scoped>
 .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: grid; place-items: center; z-index: 50; padding: 16px; }
-.modal { background: #f6f5f1; border-radius: 12px; width: min(1100px, 100%); max-height: 94vh; overflow: auto; padding: 22px 26px; }
+.modal { background: #eef3f2; border-radius: 12px; width: min(1100px, 100%); max-height: 94vh; overflow: auto; padding: 22px 26px; }
 header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 14px; }
-.crumb { font-size: 13px; color: #55554f; margin: 0 0 4px; }
+.crumb { font-size: 15px; color: #4a5755; margin: 0 0 4px; }
 h2 { margin: 0; font-size: 28px; font-weight: 500; }
-.sub { margin: 2px 0 0; color: #55554f; font-size: 14px; }
+.sub { margin: 2px 0 0; color: #4a5755; font-size: 15px; }
 .x { background: none; border: 0; font-size: 32px; line-height: 1; cursor: pointer; }
 .cols { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 18px; }
 .main, .side { display: grid; gap: 16px; align-content: start; }
 .who { display: flex; gap: 16px; align-items: center; margin-bottom: 14px; }
 .who h3 { margin: 0; font-size: 26px; font-weight: 500; }
 .who p { margin: 4px 0 0; }
-.badge { font-size: 14px; background: #0d8177; color: #fff; border-radius: 99px; padding: 2px 16px; vertical-align: middle; }
-.ava { width: 62px; height: 62px; border-radius: 50%; background: #d9d9d9; display: grid; place-items: center; font-weight: 700; font-size: 24px; flex: none; transition: background .3s, color .3s; }
+.badge { font-size: 15px; background: #0d8177; color: #fff; border-radius: 99px; padding: 2px 16px; vertical-align: middle; }
+.ava { width: 62px; height: 62px; border-radius: 50%; background: #e4ecea; display: grid; place-items: center; font-weight: 700; font-size: 24px; flex: none; transition: background .3s, color .3s; }
 .ava.sm { width: 48px; height: 48px; font-size: 17px; }
 .ava.on { background: #0d8177; color: #fff; }
 dl { display: grid; grid-template-columns: 130px 1fr; gap: 8px 0; margin: 0; }
-dt { color: #55554f; } dd { margin: 0; }
+dt { color: #4a5755; } dd { margin: 0; }
 .rhead { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
 h4 { margin: 0 0 8px; font-size: 17px; display: flex; align-items: center; gap: 8px; }
 .rhead h4 { margin: 0; }
 .bar { width: 5px; height: 20px; background: #0d8177; border-radius: 3px; }
 .count { background: #d6d8dc; border-radius: 99px; padding: 2px 12px; font-weight: 400; font-size: 15px; }
-.role { display: flex; gap: 14px; align-items: center; background: #fff; border: 1px solid #000; border-radius: 8px; padding: 10px 18px; margin-top: 10px; animation: rise .3s ease both; }
+.role { display: flex; gap: 14px; align-items: center; background: #fff; border: 1px solid #a9bcb8; border-radius: 8px; padding: 10px 18px; margin-top: 10px; animation: rise .3s ease both; }
 .rt { flex: 1; display: grid; }
-.rt small { color: #55554f; }
+.rt small { color: #4a5755; }
 .role--new { background: #fdf0c8; border-color: #f2c94c; }
 .role--del { background: #fbe4e1; border-color: #e5a29a; }
 .role--del .rt strong { text-decoration: line-through; }
 .hapus { color: #b42318; border-color: #b42318; }
 .hapus:hover { background: #fdeceb; }
-.err { color: #b42318; margin: 10px 0 0; font-size: 14px; }
+.err { color: #b42318; margin: 10px 0 0; font-size: 15px; }
 .save { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 .save strong { flex: 1; font-weight: 500; font-size: 18px; }
 .dot { width: 22px; height: 22px; border-radius: 50%; background: #bfc3c9; }
 .save--dirty { background: #fdf0c8; border-color: #f2c94c; }
 .save--dirty .dot { background: #fbc02d; }
-.muted { color: #55554f; }
+.muted { color: #4a5755; }
 ul { padding-left: 20px; margin: 6px 0 0; display: grid; gap: 6px; }
 @media (max-width: 1000px) { .cols { grid-template-columns: 1fr; } }
 </style>

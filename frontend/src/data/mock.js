@@ -23,7 +23,7 @@ const TIK = 'Teknik Informatika dan Komputer'
 // supaya alur "Tandai terverifikasi" di halaman Detail bisa dicoba.
 export const dosen = [
   { id: 'A', nama: 'Dosen A', jurusan: TIK, jabatan: 'Kaprodi', golongan: 'Gol III', sksWajib: 10, sksLebih: 6, honor: 960_000, status: 'terverifikasi' },
-  { id: 'B', nama: 'Dosen B', jurusan: TIK, jabatan: 'Lektor', golongan: 'Gol III', sksWajib: 10, sksLebih: 12, honor: 1_040_000, status: 'menunggu' },
+  { id: 'B', nama: 'Dosen B', jurusan: TIK, jabatan: 'Lektor', golongan: 'Gol III', sksWajib: 10, sksLebih: 12, honor: 1_040_000, status: 'menunggu', catatan: 'Golongan belum terisi di SISTER, pajak sementara memakai golongan III.' },
   { id: 'C', nama: 'Dosen C', jurusan: TIK, jabatan: 'Lektor', golongan: 'Gol III', sksWajib: 10, sksLebih: 2, honor: 240_000, status: 'terverifikasi' },
   { id: 'D', nama: 'Dosen D', jurusan: TIK, jabatan: 'Lektor', golongan: 'Gol III', sksWajib: 10, sksLebih: 8, honor: 910_000, status: 'terverifikasi' },
   { id: 'E', nama: 'Dosen E', jurusan: TIK, jabatan: 'Lektor Kepala', golongan: 'Gol IV', sksWajib: 6, sksLebih: 4, honor: 680_000, status: 'terverifikasi' },

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Support\Bentuk;
 use App\Support\Kueri;
+use App\Support\Perhatian;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -21,7 +22,9 @@ class KeuanganController extends Controller
     {
         $p = $this->periodeDipilih($request);
         $verif = (int) DB::selectOne(Kueri::HONOR_TERVERIFIKASI, ['smt' => $p->id_smt])->n;
-        return ['data' => ['periode' => $p->label] + Bentuk::dashboard(DB::select(Kueri::DASHBOARD, ['smt' => $p->id_smt]), $verif)];
+        $np = DB::selectOne(Kueri::NP_RINGKAS, ['smt' => $p->id_smt]);
+        $perhatian = Perhatian::hitung(fn (string $sql, array $b) => DB::select($sql, $b), $p->id_smt);
+        return ['data' => ['periode' => $p->label] + Bentuk::dashboard(DB::select(Kueri::DASHBOARD, ['smt' => $p->id_smt]), $verif, $np, $perhatian)];
     }
 
     public function laporan(Request $request)
@@ -50,7 +53,8 @@ class KeuanganController extends Controller
             'periode' => $p->label, 'profil' => $profil, 'kelas' => $kelas,
             'ringkasan' => ['totalKelas' => count($kelas), 'sksTerlaksana' => Bentuk::angka($ringkas->sks_terlaksana ?? null),
                             'sksWajib' => Bentuk::angka($ringkas->sks_wajib ?? null), 'sksLebih' => Bentuk::angka($ringkas->sks_lebih ?? null),
-                            'status' => Bentuk::status($ringkas->status_verifikasi ?? null)],
+                            'status' => Bentuk::status($ringkas->status_verifikasi ?? null),
+                            'catatan' => $ringkas->catatan ?? null],
             'mingguan' => [],
         ]];
     }
@@ -85,5 +89,16 @@ class KeuanganController extends Controller
     public function tarif()
     {
         return ['data' => Bentuk::tarif(DB::select(Kueri::TARIF_AKTIF), DB::select(Kueri::PAJAK), DB::select(Kueri::ATURAN))];
+    }
+
+    public function tarifNonPengajaran()
+    {
+        return ['data' => array_map([Bentuk::class, 'tarifNp'], DB::select(Kueri::TARIF_NP))];
+    }
+
+    public function tarifDaftar()
+    {
+        // Sama dengan daftar di halaman Master Tarif Admin Input, tetapi hanya-baca untuk Keuangan dan Pimpinan.
+        return ['data' => array_map([Bentuk::class, 'tarifAdmin'], DB::select(Kueri::TARIF_ADMIN))];
     }
 }

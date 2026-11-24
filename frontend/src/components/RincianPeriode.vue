@@ -1,5 +1,6 @@
 <script setup>
 import { rupiah } from '../lib/format.js'
+import MingguanAcademia from './MingguanAcademia.vue'
 
 // Tampilan rincian dosen per periode (profil, kartu ringkasan, tabel per minggu).
 // Dipakai role Dosen (milik sendiri) dan Keuangan/Pimpinan (saat membuka Detail dosen).
@@ -11,9 +12,13 @@ defineProps({
   totalKelas: { type: [Number, String], default: '-' },
   terlaksana: Number,
   wajib: Number,
+  catatan: String, // catatan perlu pengecekan dari perhitungan (hanya untuk Keuangan/Pimpinan/Admin)
   lebih: Number,
   minggu: { type: Array, default: () => [] },
   detailTo: { type: Function, required: true },
+  pertemuanTo: { type: Function, default: () => ({}) },
+  dosenId: String, // kosong = dosen yang sedang login
+  periode: String,
 })
 </script>
 
@@ -24,6 +29,7 @@ defineProps({
       <h2>{{ nama }}</h2>
       <p>{{ jabatan }} · {{ prodi }}</p>
       <p>{{ email }}</p>
+      <p v-if="catatan" class="catatan" role="note"><strong>Perlu pengecekan:</strong> {{ catatan }}</p>
     </div>
   </section>
 
@@ -31,18 +37,14 @@ defineProps({
     <div class="stat"><div class="stat__lbl">Total Kelas</div><div class="stat__val">{{ totalKelas }}</div><div class="stat__sub">{{ totalKelas }} mata kuliah</div></div>
     <div class="stat"><div class="stat__lbl">SKS terlaksana</div><div class="stat__val">{{ terlaksana }}</div></div>
     <div class="stat"><div class="stat__lbl">SKS Wajib</div><div class="stat__val">{{ wajib }}</div><div class="stat__sub">{{ jabatan }}</div></div>
-    <div class="stat"><div class="stat__lbl">SKS Lebih</div><div class="stat__val">{{ lebih }}</div><div class="stat__sub">{{ terlaksana }}-{{ wajib }}</div></div>
+    <div class="stat"><div class="stat__lbl">SKS lebih</div><div class="stat__val">{{ lebih }}</div><div class="stat__sub">{{ terlaksana }}-{{ wajib }}</div></div>
   </section>
 
-  <section class="panel">
-    <template v-if="!minggu.length">
-      <p class="kosong">Rincian per minggu periode ini belum tersedia (menunggu kalender akademik dari SISTER).</p>
-      <RouterLink :to="detailTo()" class="btn btn--ghost sm">Lihat detail honor per kelas</RouterLink>
-    </template>
-    <div v-else class="scroll-x">
+  <section v-if="minggu.length" class="panel">
+    <div class="scroll-x">
       <table class="tbl tbl--line">
         <thead>
-          <tr><th>Minggu</th><th>Total SKS</th><th>WM</th><th>Tarif Perdir</th><th>Rincian Bruto Perdir</th><th>Pajak</th><th>Netto</th><th>Aksi</th></tr>
+          <tr><th>Minggu</th><th>Total SKS</th><th>Waktu mengajar</th><th>Tarif per SKS</th><th>Honor bruto</th><th>Pajak</th><th>Honor neto</th><th>Aksi</th></tr>
         </thead>
         <tbody>
           <tr v-for="m in minggu" :key="m.label">
@@ -60,6 +62,10 @@ defineProps({
       </table>
     </div>
   </section>
+
+  <MingguanAcademia v-if="periode" :dosen-id="dosenId" :periode="periode" :detail-to="detailTo" :pertemuan-to="pertemuanTo">
+    <template #total-aksi><slot name="total-aksi" /></template>
+  </MingguanAcademia>
 </template>
 
 <style scoped>
@@ -67,9 +73,11 @@ defineProps({
 .ava { width: 76px; height: 76px; flex: none; }
 .prof h2 { font-size: 32px; font-weight: 500; margin: 0; }
 .prof p { margin: 2px 0; }
+.prof > div { min-width: 0; flex: 1; }
+.prof .catatan { background: #fff8e1; border: 1px solid #e0b400; border-radius: 8px; padding: 10px 14px; font-size: 15px; margin: 12px 0 0; }
 .cards { grid-template-columns: repeat(4, 1fr); margin-bottom: 20px; }
 .sm { padding: 6px 14px; white-space: nowrap; text-decoration: none; display: inline-block; }
-.tbl td { vertical-align: middle; font-size: 14px; }
-.kosong { color: #77776f; }
+.tbl td { vertical-align: middle; font-size: 15px; }
+.kosong { color: #4a5755; }
 @media (max-width: 900px) { .cards { grid-template-columns: repeat(2, 1fr); } }
 </style>

@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Support\Bentuk;
-use App\Support\Cas;
 use App\Support\Kueri;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -35,50 +34,6 @@ class AuthController extends Controller
         $request->session()->regenerate();
         $request->session()->put('peran_aktif', $data['role']);
         return ['data' => $this->muatan($baris, $data['role'])];
-    }
-
-    /**
-     * Login SSO. CAS mengembalikan browser ke FRONTEND bersama ?ticket=...; frontend meneruskan tiket ke sini.
-     * `service` TIDAK diterima dari klien: selalu config('cas.service'), supaya tiket tidak bisa dipakai untuk layanan lain.
-     */
-    public function ssoValidate(Request $request)
-    {
-        $data = $request->validate(['ticket' => ['required', 'string', 'max:256', 'regex:/^ST-[A-Za-z0-9._\-]+$/']]);
-        $cfg = config('cas');
-
-        $hasil = Cas::validasi($cfg['server'], $cfg['service'], $data['ticket'], function (string $url) use ($cfg) {
-            try {
-                $r = Http::timeout(10)->withOptions(['verify' => $cfg['verify_tls']])->get($url);
-                return $r->successful() ? $r->body() : null;
-            } catch (\Throwable $e) {
-                Log::warning('CAS tidak terjangkau: ' . $e->getMessage());
-                return null;
-            }
-        });
-
-        abort_if($hasil['kode'] === 'CAS_TIDAK_TERJANGKAU', 502, 'Layanan SSO PNJ tidak dapat dihubungi. Coba lagi nanti.');
-        abort_unless($hasil['ok'], 401, 'Tiket SSO tidak valid atau sudah kedaluwarsa. Silakan masuk lagi.');
-
-        $baris = DB::selectOne(Kueri::USER_BY_SSO, ['u1' => $hasil['user'], 'u2' => $hasil['user'], 'u3' => $hasil['user']]);
-        if ($baris === null || ! $baris->status_aktif) {
-            Log::notice('Login SSO ditolak: akun belum terdaftar/nonaktif', ['atribut' => array_keys($hasil['atribut'])]);
-            $isi = ['message' => 'Akun SSO Anda belum terdaftar di Integratia. Hubungi admin.'];
-            if (app()->environment('local')) {
-                // Membantu pengembangan: tahu identitas apa yang dikirim CAS agar bisa didaftarkan di tabel users.
-                $isi['debug'] = ['cas_user' => $hasil['user'], 'atribut' => $hasil['atribut']];
-            }
-            return response()->json($isi, 403);
-        }
-
-        $roles = $this->peranPengguna($baris->id_user);
-        abort_if($roles === [], 403, 'Akun Anda belum memiliki peran. Hubungi admin.');
-
-        Auth::login(User::findOrFail($baris->id_user));
-        $request->session()->regenerate();
-        $request->session()->put('peran_aktif', $roles[0]);
-        $request->session()->put('via_sso', true);
-        DB::insert(Kueri::LOG, ['pelaku' => $baris->id_user, 'aksi' => 'Login SSO', 'objek' => 'peran ' . $roles[0], 'peran' => $roles[0], 'status' => 'berhasil']);
-        return ['data' => $this->muatan($baris, $roles[0])];
     }
 
     /**
@@ -124,6 +79,14 @@ class AuthController extends Controller
         return ['data' => $this->muatan($baris, $aktif)];
     }
 
+    /** Profil akun yang sedang login, untuk peran apa pun (tidak seperti /dosen/profil yang khusus peran dosen). */
+    public function profil(Request $request)
+    {
+        $u = DB::selectOne(Kueri::USER_PROFIL, ['id' => $request->user()->id_user]);
+        $dosen = $u->id_dosen ? Bentuk::profil(DB::selectOne(Kueri::PROFIL, ['id' => $u->id_dosen])) : null;
+        return ['data' => Bentuk::profilAkun($u, $dosen)];
+    }
+
     /** Ganti peran aktif: server memeriksa bahwa pengguna memang memilikinya. */
     public function ganti(Request $request)
     {
@@ -133,16 +96,6 @@ class AuthController extends Controller
         abort_unless(in_array($data['role'], $punya, true), 403, 'Peran tidak tersedia.');
         $request->session()->put('peran_aktif', $data['role']);
         return ['data' => $this->muatan($baris, $data['role'])];
-    }
-
-    public function logout(Request $request)
-    {
-        // Sesi SSO: akhiri juga sesi di CAS PNJ supaya login berikutnya meminta kredensial lagi.
-        $url = $request->session()->get('via_sso') ? Cas::logoutUrl(config('cas.server'), config('cas.logout_service')) : null;
-        Auth::guard('web')->logout();
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
-        return ['logout_url' => $url];
     }
 
     private function peranPengguna(string $idUser): array

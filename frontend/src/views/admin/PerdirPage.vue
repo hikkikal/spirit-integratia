@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { getPerdir, simpanPerdir, ubahStatusPerdir, hapusPerdir } from '../../services/admin.js'
 import { tanggalPanjang, ukuranFile, hariIni } from '../../lib/format.js'
 import ModalAdmin from '../../components/ModalAdmin.vue'
@@ -43,6 +43,8 @@ async function ubah(p) {
 
 // ---------- Hapus (dengan konfirmasi) ----------
 const hapus = ref(null)
+const hapusTampil = ref(null)   // nomor tetap tampil selama animasi tutup
+watch(hapus, (v) => { if (v) hapusTampil.value = v })
 const menghapus = ref(false)
 async function konfirmasiHapus() {
   menghapus.value = true
@@ -120,7 +122,7 @@ async function kirim() {
     </div>
     <button class="btn upload" @click="bukaUpload">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V5M7.5 9.5L12 5l4.5 4.5M4 15v4h16v-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
-      Upload Perdir baru
+      Unggah Perdir baru
     </button>
   </div>
 
@@ -163,7 +165,7 @@ async function kirim() {
     </div>
   </section>
 
-  <ModalAdmin v-if="modal" judul="Upload Perdir" sub="Isi data dan lampirkan berkas PDF" @close="modal = false">
+  <ModalAdmin :buka="modal" judul="Unggah Perdir" sub="Isi data dan lampirkan berkas PDF" @close="modal = false">
     <form class="form" novalidate @submit.prevent="kirim">
       <div class="dua">
         <label class="fld" :class="{ 'fld--err': err.nomor }"><span>Nomor Peraturan</span>
@@ -195,7 +197,7 @@ async function kirim() {
     </form>
   </ModalAdmin>
 
-  <ModalAdmin v-if="hapus" judul="Hapus dokumen?" :sub="`${hapus.nomor} akan dihapus dari daftar.`" @close="hapus = null">
+  <ModalAdmin :buka="!!hapus" judul="Hapus dokumen?" :sub="`${hapusTampil?.nomor ?? ''} akan dihapus dari daftar.`" @close="hapus = null">
     <p class="peringatan">Tindakan ini tidak dapat dibatalkan. Jika dokumen hanya sudah tidak berlaku, gunakan “Tandai tidak berlaku” agar tetap tersimpan sebagai arsip.</p>
     <div class="aksi2">
       <button class="btn btn--ghost" @click="hapus = null">Batal</button>
@@ -216,15 +218,15 @@ async function kirim() {
 .bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
 .bar h2 { margin: 0; font-size: 17px; }
 .kontrol { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-.cari { font: inherit; font-size: 14px; padding: 6px 12px; border: 1px solid #000; border-radius: 4px; background: #fff; min-width: 200px; }
-.chip { font: inherit; font-size: 14px; padding: 6px 16px; border-radius: 999px; border: 1px solid #0d8177; background: #fff; color: #0d8177; cursor: pointer; }
+.cari { font: inherit; font-size: 15px; padding: 6px 12px; border: 1px solid #a9bcb8; border-radius: 4px; background: #fff; min-width: 200px; }
+.chip { font: inherit; font-size: 15px; padding: 6px 16px; border-radius: 999px; border: 1px solid #0d8177; background: #fff; color: #0d8177; cursor: pointer; }
 .chip.on { background: #0d8177; color: #fff; }
-.kosong { text-align: center; color: #777; }
+.kosong { text-align: center; color: #4a5755; }
 .judul { min-width: 220px; max-width: 320px; }
 .berkas { white-space: nowrap; }
 .berkas svg { width: 22px; height: 22px; vertical-align: -6px; margin-right: 8px; }
-.lencana { display: inline-block; border-radius: 4px; padding: 2px 12px; font-size: 13px; white-space: nowrap; }
-.lencana--on { background: #8dfcb3; color: #0a5928; }
+.lencana { display: inline-block; border-radius: 4px; padding: 2px 12px; font-size: 15px; white-space: nowrap; }
+.lencana--on { background: #c8efd7; color: #0a5928; }
 .lencana--off { border: 1px solid #b42318; color: #b42318; background: #fff; }
 .aksi { white-space: nowrap; }
 .aksi .btn--kecil { margin-right: 12px; }

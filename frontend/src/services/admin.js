@@ -1,6 +1,7 @@
 // Lapisan data Admin Input. Mode tiruan memakai src/data/admin.js; mode API memanggil backend.
 // Kontrak endpoint: docs/ADMIN_INPUT_API.md (backend: AdminInputController).
 import { api, USE_MOCK } from './api.js'
+import { getTarifNonPengajaran } from './tarif.js'
 import { koneksiSister, logSinkron, buatLog, tarifList, perdirList, PESAN_TIMEOUT } from '../data/admin.js'
 
 const tunda = (ms) => new Promise((r) => setTimeout(r, ms))
@@ -28,8 +29,9 @@ export async function getLogSinkron(id) {
 const DURASI_LANGKAH = 1100
 const proses = {}
 
-export async function mulaiSinkron({ simulasiGagal = false } = {}) {
-  if (!USE_MOCK) return (await api('/admin/sinkron', { method: 'POST', body: { simulasiGagal } })).data // { id }; simulasiGagal hanya dipakai server bila APP_ENV=local
+// periode: label periode (mis. 'Genap 2025/2026'); kosong = server memakai periode terbaru yang belum terkunci. Hanya berlaku pada sinkronisasi SISTER sungguhan.
+export async function mulaiSinkron({ simulasiGagal = false, periode = '' } = {}) {
+  if (!USE_MOCK) return (await api('/admin/sinkron', { method: 'POST', body: periode ? { simulasiGagal, periode } : { simulasiGagal } })).data // { id }; simulasiGagal hanya dipakai server bila APP_ENV=local
   const id = `run${Date.now()}`
   proses[id] = { mulai: Date.now(), gagal: simulasiGagal, dicatat: false }
   return { id }
@@ -81,6 +83,21 @@ export async function simpanTarif(t) {
   const baru = { ...t, id: `t${Date.now()}` }
   tarifList.unshift(baru)
   return { ...baru }
+}
+
+// ---------- Tarif non-pengajaran (SBM) ----------
+let npMock = null
+export async function getTarifNp() {
+  if (!USE_MOCK) return (await api('/admin/tarif-np')).data
+  npMock ??= await getTarifNonPengajaran()
+  return npMock.map((t) => ({ ...t }))
+}
+export async function simpanTarifNp(t) {
+  if (!USE_MOCK) return (await api(`/admin/tarif-np/${t.kode}`, { method: 'PUT', body: { golIV: t.golIV, golIII: t.golIII, keterangan: t.keterangan || null } })).data
+  await tunda(250)
+  const i = npMock.findIndex((x) => x.kode === t.kode)
+  if (i >= 0) npMock[i] = { ...npMock[i], golIV: Number(t.golIV), golIII: Number(t.golIII), keterangan: t.keterangan || null }
+  return { ...npMock[i] }
 }
 
 // ---------- Dokumen Perdir ----------

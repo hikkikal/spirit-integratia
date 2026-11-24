@@ -21,7 +21,7 @@ return [
 
     // 'allowed_origins' => [env('FRONTEND_URL', 'http://localhost:5173')],
 
-    'allowed_origins' => [('http://localhost:8081')],
+    'allowed_origins' => [('http://localhost:3000')],
 
     'allowed_origins_patterns' => [],
 

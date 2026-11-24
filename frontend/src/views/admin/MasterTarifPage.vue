@@ -4,6 +4,7 @@ import { getTarif, simpanTarif } from '../../services/admin.js'
 import { JABATAN_OPSI } from '../../data/admin.js'
 import { rupiah, tanggalPanjang, hariIni } from '../../lib/format.js'
 import ModalAdmin from '../../components/ModalAdmin.vue'
+import TarifNonPengajaranPanel from '../../components/TarifNonPengajaranPanel.vue'
 
 const daftar = ref([])
 const muat = ref(true)
@@ -115,7 +116,7 @@ async function kirim() {
 
   <p v-if="galat" class="galat" role="alert">{{ galat }}</p>
   <section class="panel">
-    <div class="scroll-x">
+    <div class="scroll-x scroll-box">
       <table class="tbl tbl--line">
         <thead><tr><th>Jenis</th><th>Jenis Kelas</th><th>Jabatan / Golongan</th><th class="r">Honor per SKS</th><th>Berlaku s.d.</th><th>Status</th><th class="c">Aksi</th></tr></thead>
         <tbody>
@@ -135,7 +136,9 @@ async function kirim() {
     </div>
   </section>
 
-  <ModalAdmin v-if="modal" judul="Master Tarif" :sub="form.id ? 'Ubah master tarif' : 'Tambahkan master tarif'" @close="modal = false">
+  <TarifNonPengajaranPanel />
+
+  <ModalAdmin :buka="modal" judul="Master Tarif" :sub="form.id ? 'Ubah master tarif' : 'Tambahkan master tarif'" @close="modal = false">
     <form class="form" novalidate @submit.prevent="kirim">
       <div class="fld">
         <span>Jenis Tarif</span>
@@ -179,17 +182,17 @@ async function kirim() {
 .head { display: flex; justify-content: space-between; gap: 16px 24px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 8px; }
 .head .page-sub { margin-bottom: 8px; }
 .filter { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
-.filter .fld input, .filter .fld select { border: 0; background: #d9d9d9; border-radius: 4px; min-width: 190px; }
+.filter .fld input, .filter .fld select { border: 0; background: #e4ecea; border-radius: 4px; min-width: 190px; }
 .tambah { background: #0d8177; padding: 11px 22px; }
 .kartu3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin: 18px 0; }
 .stat__val { font-size: 28px; }
 .galat { color: var(--color-error); }
 .r { text-align: right; }
 .c { text-align: center; }
-.kosong { text-align: center; color: #777; }
+.kosong { text-align: center; color: #4a5755; }
 .tgl { white-space: nowrap; }
 .tgl svg { width: 22px; height: 22px; vertical-align: -6px; margin-right: 8px; }
-.st { font-size: 13px; letter-spacing: .02em; }
+.st { font-size: 15px; letter-spacing: .02em; }
 .st--on { color: #0d8177; }
 .st--off { color: #b42318; }
 .ikon { width: 34px; height: 34px; border: 1px solid #0d8177; border-radius: 6px; background: #fff; color: #000; cursor: pointer; display: inline-grid; place-items: center; }

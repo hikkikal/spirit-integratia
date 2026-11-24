@@ -56,7 +56,7 @@ const tinggi = (b) => Math.round((b.bruto / maks.value) * 100)
     <div class="scroll-x">
       <table class="tbl tbl--line">
         <thead>
-          <tr><th>Periode</th><th>SKS wajib</th><th>SKS terlaksana</th><th>SKS lebih</th><th>Honor bruto</th><th>Pajak</th><th>Honor netto</th><th>Detail</th></tr>
+          <tr><th>Periode</th><th>SKS wajib</th><th>SKS terlaksana</th><th>SKS lebih</th><th>Honor bruto</th><th>Pajak</th><th>Honor neto</th><th>Detail</th></tr>
         </thead>
         <tbody>
           <tr v-for="b in baris" :key="b.periode">
@@ -74,12 +74,12 @@ const tinggi = (b) => Math.round((b.bruto / maks.value) * 100)
 <style scoped>
 .cards { grid-template-columns: repeat(3, 1fr); margin-bottom: 16px; }
 .chart { margin-bottom: 16px; }
-.bars { height: 260px; display: flex; align-items: flex-end; justify-content: center; gap: 28px; border-bottom: 1px solid #000; padding-top: 28px; }
+.bars { height: 260px; display: flex; align-items: flex-end; justify-content: center; gap: 28px; border-bottom: 1px solid #a9bcb8; padding-top: 28px; }
 .col { height: 100%; width: 90px; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; position: relative; }
 .bar { transform-origin: bottom; animation: grow .7s .3s cubic-bezier(.2,.7,.2,1) both; width: 100%; background: #67d1c9; border-radius: 6px 6px 0 0; display: block; }
 .bar--last { background: #0d9488; }
-.amt { font-size: 13px; margin-bottom: 4px; white-space: nowrap; }
-.lbl { position: absolute; top: calc(100% + 8px); font-size: 13px; white-space: nowrap; }
+.amt { font-size: 15px; margin-bottom: 4px; white-space: nowrap; }
+.lbl { position: absolute; top: calc(100% + 8px); font-size: 15px; white-space: nowrap; }
 .chart { padding-bottom: 44px; }
 @media (max-width: 900px) { .cards { grid-template-columns: 1fr; } .bars { gap: 10px; } .col { width: 60px; } }
 .sm { padding: 6px 14px; white-space: nowrap; text-decoration: none; display: inline-block; }

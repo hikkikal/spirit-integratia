@@ -94,8 +94,15 @@ class AdminSuperController extends Controller
         $status = strtolower(trim((string) $request->query('status', '')));
         $status = in_array($status, ['berhasil', 'gagal'], true) ? $status : '';
         $q = addcslashes(trim((string) $request->query('q', '')), "%_\\");
-        $baris = DB::select(Kueri::LOG_AKTIVITAS, ['hari1' => $hari, 'hari2' => $hari, 'status1' => $status, 'status2' => $status,
+        $aksi = trim((string) $request->query('aksi', ''));
+        $baris = DB::select(Kueri::LOG_AKTIVITAS, ['hari1' => $hari, 'hari2' => $hari, 'status1' => $status, 'status2' => $status, 'aksi1' => $aksi, 'aksi2' => $aksi,
             'q1' => $q, 'q2' => $q, 'q3' => $q]);
         return ['data' => array_map([Bentuk::class, 'logAktivitas'], $baris)];
+    }
+
+    /** Daftar jenis aksi yang pernah tercatat, untuk filter di halaman log. */
+    public function logAksi()
+    {
+        return ['data' => array_column(DB::select(Kueri::LOG_AKSI), 'aksi')];
     }
 }

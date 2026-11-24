@@ -87,14 +87,14 @@ async function ubahStatus(p) {
     <h2>Daftar pengguna</h2>
     <div class="scroll-x">
       <table class="tbl tbl--line">
-        <thead><tr><th>NIP</th><th>Nama</th><th>Email</th><th>Role</th><th>Status</th><th>Aksi</th></tr></thead>
+        <thead><tr><th>NIP</th><th>Nama</th><th>Email</th><th>Peran</th><th>Status</th><th>Aksi</th></tr></thead>
         <tbody>
           <tr v-for="p in tampil" :key="p.nip">
             <td>{{ p.nip }}</td><td>{{ p.nama }}</td><td>{{ p.email }}</td>
             <td><span v-for="r in p.roles" :key="r" class="tag">{{ ROLE_INFO[r].label }}</span></td>
             <td><span :class="p.aktif ? 'badge-ok' : 'tag tag--off'">{{ p.aktif ? 'Aktif' : 'Nonaktif' }}</span></td>
             <td><div class="aksi">
-              <button class="btn btn--ghost btn--sm" @click="diubah = p.nip">Ubah role</button>
+              <button class="btn btn--ghost btn--sm" @click="diubah = p.nip">Ubah peran</button>
               <button v-if="!p.roles.includes('admin_super')" class="btn btn--ghost btn--sm" @click="ubahStatus(p)">{{ p.aktif ? 'Nonaktifkan' : 'Aktifkan' }}</button>
             </div></td>
           </tr>
@@ -111,7 +111,7 @@ async function ubahStatus(p) {
 <style scoped>
 .stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; margin-bottom: 20px; }
 .stat { padding: 14px 16px; }
-.lbl { font-size: 14px; color: #55554f; }
+.lbl { font-size: 15px; color: #4a5755; }
 .val { font-size: 30px; font-weight: 600; margin-top: 8px; }
 h2 { font-size: 18px; margin: 0 0 8px; }
 .galat { color: #b3261e; margin: 0 0 12px; }

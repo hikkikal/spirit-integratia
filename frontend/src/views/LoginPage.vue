@@ -22,6 +22,20 @@ const error = ref(new URLSearchParams(location.search).get('error') === 'unregis
 
 const canSubmit = computed(() => !loading.value)
 
+// Mode SSO: minta alamat login ke backend lalu alihkan browser ke SSO PNJ.
+const loadingSso = ref(false)
+async function mulaiSso() {
+  error.value = ''
+  loadingSso.value = true
+  try {
+    await startSso()
+  } catch (e) {
+    console.error(e)
+    error.value = e.message || 'Tidak dapat memulai SSO. Coba lagi.'
+    loadingSso.value = false
+  }
+}
+
 // Mode SSO: username/email + password dicek backend (akun lokal saja; akun SSO memakai tombol SSO).
 // Mode dev/mock: memakai pilihan peran, password tidak dikirim ke mana pun.
 async function onSubmit() {
@@ -112,9 +126,9 @@ async function onSubmit() {
         </form>
 
         <div class="atau"><span>atau</span></div>
-        <button class="btn-sso" type="button" @click="startSso">
+        <button class="btn-sso" type="button" :disabled="loadingSso" @click="mulaiSso">
           <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="15" r="4" /><path d="m11 12 8-8m-3 3 2.5 2.5M14 9l2 2" /></svg>
-          Masuk dengan SSO PNJ
+          {{ loadingSso ? 'Mengalihkan…' : 'Masuk dengan SSO PNJ' }}
         </button>
 
         <p class="form__bantu">Butuh bantuan akses? Hubungi Super Admin.<br />© 2026 Integratia · Politeknik Negeri Jakarta</p>
@@ -148,7 +162,7 @@ async function onSubmit() {
 .form .form__logo { display: none; margin: 0 auto 24px; }
 .form__salam { margin: 0; font-size: 0.95rem; letter-spacing: 0.02em; text-transform: uppercase; color: #12994a; }
 h1 { margin: 2px 0 6px; font-size: 2.3rem; line-height: 1.15; }
-.form__sub { margin: 0 0 30px; color: #55554f; line-height: 1.4; }
+.form__sub { margin: 0 0 30px; color: #4a5755; line-height: 1.4; }
 
 .field + .field { margin-top: 14px; }
 .field label { display: block; font-size: 1.35rem; line-height: 1.6; }
@@ -166,21 +180,22 @@ h1 { margin: 2px 0 6px; font-size: 2.3rem; line-height: 1.15; }
 .ingat input:focus-visible + .kotak { outline: 3px solid var(--color-primary); outline-offset: 2px; }
 
 .dev { margin-top: 16px; padding: 12px 14px; border: 1px dashed #8a8a82; border-radius: 10px; }
-.dev label { display: block; font-size: 0.9rem; color: #55554f; margin-bottom: 6px; }
-.dev select { width: 100%; height: 44px; border: 1px solid #000; border-radius: 8px; padding: 0 12px; font: inherit; background: #fff; }
+.dev label { display: block; font-size: 0.9rem; color: #4a5755; margin-bottom: 6px; }
+.dev select { width: 100%; height: 44px; border: 1px solid #a9bcb8; border-radius: 8px; padding: 0 12px; font: inherit; background: #fff; }
 
 .form__error { margin: 14px 0 0; color: var(--color-error); }
-.btn-masuk { display: block; width: 100%; height: 62px; margin-top: 18px; border: 1px solid #000; border-radius: 10px; background: #0b5e58; color: #fff; font: inherit; font-size: 1.5rem; cursor: pointer; }
+.btn-masuk { display: block; width: 100%; height: 62px; margin-top: 18px; border: 1px solid #a9bcb8; border-radius: 10px; background: #0b5e58; color: #fff; font: inherit; font-size: 1.5rem; cursor: pointer; }
 .btn-masuk:hover:not(:disabled) { background: var(--color-primary-dark); }
 .btn-masuk:disabled { opacity: 0.65; cursor: progress; }
 
-.atau { display: flex; align-items: center; gap: 14px; margin: 14px 0; color: #55554f; font-size: 1.3rem; }
+.atau { display: flex; align-items: center; gap: 14px; margin: 14px 0; color: #4a5755; font-size: 1.3rem; }
 .atau::before, .atau::after { content: ''; flex: 1; height: 1px; background: #3b3b36; }
 .btn-sso { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; height: 62px; border: 2px solid #0d8177; border-radius: 10px; background: #fff; color: #0d8177; font: inherit; font-size: 1.5rem; cursor: pointer; }
 .btn-sso:hover { background: #f1f8f7; }
+.btn-sso:disabled { opacity: .6; cursor: wait; }
 .btn-sso svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .btn-masuk:focus-visible, .btn-sso:focus-visible { outline: 3px solid var(--color-primary); outline-offset: 3px; }
-.form__bantu { margin: 24px 0 0; text-align: center; color: #55554f; font-size: 0.95rem; line-height: 1.5; }
+.form__bantu { margin: 24px 0 0; text-align: center; color: #4a5755; font-size: 0.95rem; line-height: 1.5; }
 
 /* ---------- Layar sempit ---------- */
 @media (max-width: 900px) {

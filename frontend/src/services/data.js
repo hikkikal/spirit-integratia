@@ -4,6 +4,7 @@ import { api, API_URL, USE_MOCK } from './api.js'
 import { periodeOptions, jurusan as jurusanMock, honorTerverifikasi as verifMock, dosen as dosenMock, detailKelas, laporanJurusan, TARIF_KERJA_SAMA } from '../data/mock.js'
 import { profil as profilMock, riwayat as riwayatMock, kelasPeriode, mingguPeriode, TARIF_REGULER } from '../data/dosen.js'
 import { hitungBaris, hitungHonor } from '../lib/honor.js'
+import { npDosen } from '../data/nonpengajaran.js'
 
 const q = (periode) => ({ periode })
 
@@ -19,10 +20,19 @@ export async function getDaftarDosen(periode) {
 
 export async function getDashboard(periode) {
   if (USE_MOCK) {
-    return { jurusan: jurusanMock, honorTerverifikasi: verifMock, laporan: laporanJurusan }
+    const honor = npDosen.reduce((a, d) => a + d.kegiatan.reduce((b, k) => b + k.honor, 0), 0)
+    const verif = npDosen.filter((d) => d.status === 'terverifikasi').reduce((a, d) => a + d.kegiatan.reduce((b, k) => b + k.honor, 0), 0)
+    const tot = jurusanMock.reduce((a, j) => ({ honor: a.honor + j.honor, pajak: a.pajak + Math.round(j.honor * 0.05), netto: a.netto + j.honor - Math.round(j.honor * 0.05) }), { honor: 0, pajak: 0, netto: 0 })
+    return { jurusan: jurusanMock, honorTerverifikasi: verifMock, laporan: laporanJurusan, total: tot,
+      nonPengajaran: { dosen: npDosen.length, terverifikasi: npDosen.filter((d) => d.status === 'terverifikasi').length, honorTerverifikasi: verif, honorBelum: honor - verif, bruto: honor, pajak: Math.round(honor * 0.05), netto: honor - Math.round(honor * 0.05) },
+      perhatian: [
+        { kunci: 'p_golongan', label: 'Pengajaran: golongan belum diketahui (pajak golongan III sementara)', jumlah: 3, info: false, tujuan: 'data-honor' },
+        { kunci: 'np_mhs', label: 'Non-pengajaran: jumlah mahasiswa tidak lazim', jumlah: 2, info: false, tujuan: 'non-pengajaran' },
+        { kunci: 'np_lainnya', label: 'Non-pengajaran: kegiatan jenis "Lainnya" (memang tidak punya tarif SBM, hanya info)', jumlah: 40, info: true, tujuan: 'non-pengajaran' },
+      ] }
   }
   const d = (await api('/dashboard', { query: q(periode) })).data
-  return { jurusan: d.jurusan, honorTerverifikasi: d.honorTerverifikasi, laporan: d.jurusan }
+  return { jurusan: d.jurusan, honorTerverifikasi: d.honorTerverifikasi, laporan: d.jurusan, total: d.total, nonPengajaran: d.nonPengajaran, perhatian: d.perhatian || [] }
 }
 
 // Detail honor per kelas. id kosong = milik dosen yang sedang login.
@@ -49,7 +59,7 @@ export async function getDetailHonor(id, periode) {
     sksWajib: h.sksWajib, sksLebih: h.sksLebih, tarifReguler: h.tarifReguler, tarifKerjaSama: h.tarifKerjaSama,
     pajakKet: 'pajak sesuai golongan (sementara, belum dikonfirmasi)',
     sksTerlaksana: h.sksTerlaksana,
-    kelas: h.kelas.map((k) => ({ mk: k.mk, jenis: k.jenis, sks: k.sks, tarif: k.tarif, wajib: k.wajib, lebih100: k.lebih100, lebih50: k.lebih50, lebih0: k.lebih0, subtotal: k.bruto, pajak: k.pajak, honor: k.netto })),
+    kelas: h.kelas.map((k) => ({ mk: k.mk, prodi: k.prodi, jenis: k.jenis, sks: k.sks, tarif: k.tarif, wajib: k.wajib, lebih100: k.lebih100, lebih50: k.lebih50, lebih0: k.lebih0, subtotal: k.bruto, pajak: k.pajak, honor: k.netto })),
   }
 }
 
@@ -62,7 +72,7 @@ export async function getRincianDosen(id, periode) {
     return {
       profil: { nama: d.nama, jabatan: `${d.jabatan} (${d.golongan})`, prodi: 'D4 Teknik Informatika', email: `${d.nama.toLowerCase().replace(' ', '')}@pnj.ac.id` },
       kelas: ada ? kelasPeriode[periode] ?? [] : [], minggu: ada ? mingguPeriode[periode] ?? [] : [],
-      ringkasan: { totalKelas: ada ? (kelasPeriode[periode] ?? []).length : '-', sksTerlaksana: d.sksWajib + d.sksLebih, sksWajib: d.sksWajib, sksLebih: d.sksLebih, status: d.status },
+      ringkasan: { totalKelas: ada ? (kelasPeriode[periode] ?? []).length : '-', sksTerlaksana: d.sksWajib + d.sksLebih, sksWajib: d.sksWajib, sksLebih: d.sksLebih, status: d.status, catatan: d.catatan ?? null },
     }
   }
   const d = (await api(`/data-honor/${id}`, { query: q(periode) }).catch((e) => { if (e.status === 404) return null; throw e }))?.data
@@ -103,11 +113,11 @@ export async function getKelasSaya(periode) {
 
 export async function getProfilSaya() {
   if (USE_MOCK) return profilMock
-  const p = (await api('/dosen/profil')).data
+  const p = (await api('/profil')).data   // semua peran; akun tanpa data dosen hanya berisi nama, username, email
   const s = (v) => v || '-'
   return {
     nama: p.nama, gelar: p.nama, jabatan: s(p.jabatan), prodi: s(p.jurusan), kampus: 'Politeknik Negeri Jakarta', email: s(p.email),
-    nidn: s(p.nidn), sertifikat: s(p.nuptk), status: s(p.status), ttl: '-', hp: '-', alamatKampus: '-',
+    username: p.username, nidn: s(p.nidn), sertifikat: s(p.nuptk), status: s(p.status), ttl: '-', hp: '-', alamatKampus: '-',
     jurusan: s(p.jurusan), jabatanFungsional: s(p.jabatan),
   }
 }
