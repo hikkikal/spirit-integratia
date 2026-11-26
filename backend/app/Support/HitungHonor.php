@@ -41,7 +41,11 @@ final class HitungHonor
         (SELECT pk.mitra FROM pola_kelas_kerja_sama pk WHERE pg.jenis_kelas = 'Kerja Sama' AND CASE pk.tipe
             WHEN 'akhiran' THEN upper(pg.kelas) LIKE '%' || upper(pk.pola)
             WHEN 'awalan' THEN upper(pg.kelas) LIKE upper(pk.pola) || '%'
-            ELSE upper(pg.kelas) LIKE '%' || upper(pk.pola) || '%' END ORDER BY length(pk.pola) DESC, pk.id_pola LIMIT 1) AS mitra
+            ELSE upper(pg.kelas) LIKE '%' || upper(pk.pola) || '%' END ORDER BY length(pk.pola) DESC, pk.id_pola LIMIT 1) AS mitra,
+        (SELECT k->>'jenis' FROM academia_hasil ah, jsonb_array_elements(ah.data->'kelas') k
+            WHERE pg.jenis_kelas = 'Kerja Sama' AND ah.id_dosen = pg.id_dosen AND ah.id_smt = pg.id_smt
+              AND lower(trim(k->>'kelas')) = lower(trim(pg.kelas)) AND lower(trim(k->>'mk')) = lower(trim(pg.mata_kuliah))
+              AND coalesce(k->>'jenis', '') <> '' LIMIT 1) AS nama_jenis
         FROM pengajaran pg WHERE pg.id_dosen = :id AND pg.id_smt = :smt
         ORDER BY (pg.jenis_kelas = 'Kerja Sama'), pg.mata_kuliah COLLATE \"C\", pg.kelas COLLATE \"C\", pg.id_pengajaran";
     public const TARIF = "SELECT id_tarif, jenis_kelas, nama_kelas, mitra, jabatan, tarif_per_sks, berlaku_mulai, berlaku_sampai FROM master_tarif WHERE aktif";
@@ -143,7 +147,7 @@ final class HitungHonor
     }
 
     /** @return array{id:int, honor:int, sumber:string}|null  $gol = III/IV atau null bila belum diketahui */
-    public static function pilihTarif(array $tarif, string $jenis, ?string $jabfung, ?string $gol, string $tanggal, ?string $mitra = null, ?string $prodi = null, bool $longgar = false): ?array
+    public static function pilihTarif(array $tarif, string $jenis, ?string $jabfung, ?string $gol, string $tanggal, ?string $mitra = null, ?string $prodi = null, bool $longgar = false, ?string $namaJenis = null): ?array
     {
         $berlaku = fn ($t) => $t->jenis_kelas === $jenis
             && ($t->berlaku_mulai === null || $t->berlaku_mulai <= $tanggal) && ($t->berlaku_sampai === null || $t->berlaku_sampai >= $tanggal);
@@ -166,7 +170,13 @@ final class HitungHonor
         $hasil = null;
         $kandidat = [];
         if ($jenis === 'Kerja Sama') {
-            if ($mitra !== null && $mitra !== '') {
+            // Nama jenis kelas dari Academia (mis. "... PT SBI Cilacap" / "... PT SBI Narogong") sama dengan nama kelas di master tarif: itu pembedanya.
+            $nj = self::huruf($namaJenis);
+            $persis = $nj === '' ? [] : array_values(array_filter($cocok, fn ($t) => self::huruf($t->nama_kelas) === $nj));
+            if ($persis) {
+                $kandidat = $persis;
+                $hasil = self::tunggal($persis);
+            } elseif ($mitra !== null && $mitra !== '') {
                 $m = mb_strtoupper(trim($mitra));
                 $milik = array_values(array_filter($cocok, fn ($t) => self::mitraBaris($t) === $m));
                 $p = self::huruf($prodi);
@@ -326,7 +336,7 @@ final class HitungHonor
                 $wajibH = $wajibAturan[$kunci];
                 $sumberWajib = $kunci === 'ds' ? 'default' : 'tugas_tambahan';
             }
-            $kelas = array_map(fn ($k) => ['id' => $k->id_pengajaran, 'sks' => self::perseratus($k->sks), 'jenis' => $k->jenis_kelas, 'prodi' => $k->program_studi, 'mitra' => $k->mitra],
+            $kelas = array_map(fn ($k) => ['id' => $k->id_pengajaran, 'sks' => self::perseratus($k->sks), 'jenis' => $k->jenis_kelas, 'prodi' => $k->program_studi, 'mitra' => $k->mitra, 'nama_jenis' => $k->nama_jenis],
                 $baca(self::KELAS, ['id' => $d->id_dosen, 'smt' => $idSmt]));
             $bp = (int) ($pajak[$d->golongan] ?? $pajak['III'] ?? 0);
             if ($d->golongan === null) {
@@ -338,16 +348,16 @@ final class HitungHonor
             try {
                 $r = self::hitung($kelas, $wajibH, $b100, $b50, $bp, function (string $jenis, array $k) use ($tarif, $d, $tanggal, &$flags, &$tanpaTarif) {
                     $jab = $d->nama_jabfung ?? 'Tenaga Pengajar';
-                    $t = self::pilihTarif($tarif, $jenis, $jab, $d->golongan, $tanggal, $k['mitra'] ?? null, $k['prodi'] ?? null);
+                    $t = self::pilihTarif($tarif, $jenis, $jab, $d->golongan, $tanggal, $k['mitra'] ?? null, $k['prodi'] ?? null, false, $k['nama_jenis'] ?? null);
                     if ($t === null) {
-                        $t = self::pilihTarif($tarif, $jenis, $jab, $d->golongan, $tanggal, $k['mitra'] ?? null, $k['prodi'] ?? null, true);
+                        $t = self::pilihTarif($tarif, $jenis, $jab, $d->golongan, $tanggal, $k['mitra'] ?? null, $k['prodi'] ?? null, true, $k['nama_jenis'] ?? null);
                         if ($t !== null) {
                             $flags[] = 'tarif sementara (tarif terendah, karena tarif pasti tidak bisa dipilih) untuk kelas ' . $jenis . ($jenis === 'Kerja Sama' ? ' mitra ' . ($k['mitra'] ?? '-') . ' prodi ' . ($k['prodi'] ?? '-') : '') . ', perlu pengecekan';
                         }
                     }
                     if ($t === null && $d->nama_jabfung === null) {
                         // Jabatan kosong dan tarif Staff Pengajar tidak ada untuk kelas ini: pakai tarif TERENDAH dari jabatan mana pun.
-                        $t = self::pilihTarif($tarif, $jenis, '*', null, $tanggal, $k['mitra'] ?? null, $k['prodi'] ?? null, true);
+                        $t = self::pilihTarif($tarif, $jenis, '*', null, $tanggal, $k['mitra'] ?? null, $k['prodi'] ?? null, true, $k['nama_jenis'] ?? null);
                         if ($t !== null) {
                             $flags[] = 'tarif sementara (terendah dari semua jabatan) untuk kelas ' . $jenis . ($jenis === 'Kerja Sama' ? ' mitra ' . ($k['mitra'] ?? '-') : '') . ', perlu pengecekan';
                         }

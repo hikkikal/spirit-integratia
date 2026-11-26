@@ -303,7 +303,7 @@ final class Academia
      * @param array<string,list<array>> $jadwal  id_kelas => baris rencana-jadwal
      * @return array{minggu:list<array>, kelas:list<array>, catatan:list<string>}
      */
-    public static function susunMinggu(array $kelas, array $jadwal, string $idDosen, array $kalender = []): array
+    public static function susunMinggu(array $kelas, array $jadwal, string $idDosen, array $kalender = [], string $nip = ''): array
     {
         $catatan = [];
         $pertemuan = []; // satu entri per pertemuan
@@ -312,13 +312,30 @@ final class Academia
         $adaTanggal = false;
         $adaMinggu = false;
         $dilewati = 0;
+        $statusJadwal = [];
         foreach ($kelas as $k) {
             foreach ($jadwal[$k['id_kelas']] ?? [] as $b) {
                 if (! is_array($b)) {
                     continue;
                 }
+                // Bentuk sebenarnya rencana-jadwal: tiap pertemuan membawa daftar `pengajar` [{id_dosen, nip_dosen, nama_dosen}] (team teaching: beberapa dosen).
+                if (isset($b['pengajar']) && is_array($b['pengajar'])) {
+                    $adaDosen = true;
+                    $milik = false;
+                    foreach ($b['pengajar'] as $pj) {
+                        if (is_array($pj) && ((self::teks($pj['id_dosen'] ?? $pj['id_sdm'] ?? '') !== '' && strcasecmp(self::teks($pj['id_dosen'] ?? $pj['id_sdm'] ?? ''), $idDosen) === 0)
+                            || ($nip !== '' && self::norm((string) ($pj['nip_dosen'] ?? $pj['nip'] ?? '')) === self::norm($nip)))) {
+                            $milik = true;
+                            break;
+                        }
+                    }
+                    if (! $milik) {
+                        $dilewati++;
+                        continue;
+                    }
+                }
                 $d = self::teks(self::nilai($b, 'dosen'));
-                if (self::adaKolom($b, 'dosen') && $d !== '') {
+                if (! isset($b['pengajar']) && self::adaKolom($b, 'dosen') && $d !== '') {
                     $adaDosen = true;
                     if (strcasecmp($d, $idDosen) !== 0) {
                         $dilewati++;
@@ -331,7 +348,12 @@ final class Academia
                 $adaRealisasi = $adaRealisasi || $real !== null;
                 $adaTanggal = $adaTanggal || $tgl !== null;
                 $adaMinggu = $adaMinggu || is_numeric($mg);
-                $pertemuan[] = ['kelas' => $k, 'ke' => self::nilai($b, 'pertemuan_ke'), 'tgl' => $tgl, 'minggu' => is_numeric($mg) ? (int) $mg : null, 'real' => $real];
+                $stat = self::teks($b['status'] ?? '');
+                if ($stat !== '') {
+                    $statusJadwal[mb_strtolower($stat)] = ($statusJadwal[mb_strtolower($stat)] ?? 0) + 1;
+                }
+                $pertemuan[] = ['kelas' => $k, 'ke' => self::nilai($b, 'pertemuan_ke'), 'tgl' => $tgl, 'minggu' => is_numeric($mg) ? (int) $mg : null, 'real' => $real,
+                    'sks_per' => isset($b['sks']) && is_numeric($b['sks']) ? (float) $b['sks'] : null];
             }
         }
         if ($pertemuan !== [] && ! $adaDosen) {
@@ -339,6 +361,10 @@ final class Academia
         }
         if ($dilewati > 0) {
             $catatan[] = "$dilewati pertemuan milik dosen lain pada kelas yang sama tidak dihitung.";
+        }
+        if ($statusJadwal) {
+            ksort($statusJadwal);
+            $catatan[] = 'Status pertemuan pada jadwal akademik: ' . implode(', ', array_map(fn ($k, $v) => "$k ($v)", array_keys($statusJadwal), $statusJadwal)) . '.';
         }
         if ($pertemuan !== [] && ! $adaRealisasi) {
             $catatan[] = 'Kolom realisasi pertemuan tidak ditemukan pada respons data akademik, sehingga jumlah realisasi tidak dapat dihitung. Lihat contoh respons untuk menambah nama kolom.';
@@ -397,8 +423,11 @@ final class Academia
                 $m['sampai'] = $m['sampai'] === null || $p['tgl'] > $m['sampai'] ? $p['tgl'] : $m['sampai'];
             }
             $kk = &$m['kelas'][$p['kelas']['id_kelas']];
-            $kk ??= ['id_kelas' => $p['kelas']['id_kelas'], 'mk' => $p['kelas']['mk'], 'kelas' => $p['kelas']['kelas'], 'sks' => $p['kelas']['sks'], 'rencana' => 0, 'realisasi' => 0, 'pertemuan' => []];
+            $kk ??= ['id_kelas' => $p['kelas']['id_kelas'], 'mk' => $p['kelas']['mk'], 'kelas' => $p['kelas']['kelas'], 'sks' => $p['kelas']['sks'], 'rencana' => 0, 'realisasi' => 0, 'pertemuan' => [], 'sks_pertemuan' => []];
             $kk['rencana']++;
+            if ($p['sks_per'] !== null) {
+                $kk['sks_pertemuan'][] = $p['sks_per'];
+            }
             if ($p['real']) {
                 $kk['realisasi']++;
             }
@@ -537,8 +566,11 @@ final class Academia
             $s = $sis[$cocok];
             $si = ['sks' => isset($s['sks']) ? (float) $s['sks'] : null, 'rencana' => isset($s['tatap_muka_rencana']) ? (int) $s['tatap_muka_rencana'] : null, 'realisasi' => isset($s['tatap_muka_realisasi']) ? (int) $s['tatap_muka_realisasi'] : null];
             $beda = [];
-            if ($a['sks'] !== null && $si['sks'] !== null && abs($a['sks'] - $si['sks']) > 0.005) {
-                $beda[] = 'SKS: akademik ' . rtrim(rtrim(number_format($a['sks'], 2, '.', ''), '0'), '.') . ', SISTER ' . rtrim(rtrim(number_format($si['sks'], 2, '.', ''), '0'), '.');
+            // Kelas team teaching: SISTER mencatat SKS bagian dosen ini (SKS kelas dibagi jumlah dosen); itu yang dibayar, jadi itu pula yang dibandingkan.
+            $jd = (int) ($k['jml_dosen'] ?? 0);
+            $sksBagian = $a['sks'] !== null && $jd > 1 ? $a['sks'] / $jd : $a['sks'];
+            if ($sksBagian !== null && $si['sks'] !== null && abs($sksBagian - $si['sks']) > 0.01) {
+                $beda[] = 'SKS: akademik ' . rtrim(rtrim(number_format($a['sks'], 2, '.', ''), '0'), '.') . ($jd > 1 ? " dibagi $jd dosen = " . rtrim(rtrim(number_format($sksBagian, 2, '.', ''), '0'), '.') : '') . ', SISTER ' . rtrim(rtrim(number_format($si['sks'], 2, '.', ''), '0'), '.');
             }
             if ($a['rencana'] !== null && $si['rencana'] !== null && $a['rencana'] !== $si['rencana']) {
                 $beda[] = "Pertemuan rencana: akademik {$a['rencana']}, SISTER {$si['rencana']}";
@@ -548,14 +580,7 @@ final class Academia
             }
             $kita = $hit[self::norm($k['mk'] !== '' ? $k['mk'] : ($s['mata_kuliah'] ?? '')) . '|' . self::norm($k['kelas'])] ?? null;
             $le = ['academia' => $k['lebih'] ?? null, 'kita' => $kita];
-            if ($kita !== null && ($k['lebih'][0] ?? null) !== null) {
-                $nm = ['100%', '50%', 'tidak dibayar'];
-                foreach ($nm as $i => $n) {
-                    if ($k['lebih'][$i] !== null && abs($k['lebih'][$i] - $kita[$i]) > 0.005) {
-                        $beda[] = "Kelebihan SKS $n: akademik " . $fmt($k['lebih'][$i]) . ', honor kita ' . $fmt($kita[$i]);
-                    }
-                }
-            }
+            // Pembagian kelebihan SKS per kelas versi akademik hanya ditampilkan (kolom Kelebihan SKS), tidak menjadikan status "berbeda": yang dibayar mengikuti Perdir dan tarif Integratia.
             $hasil[] = ['info' => ['prodi' => $k['prodi'] ?? '', 'jenis' => $k['jenis'] ?? '', 'jml_dosen' => $k['jml_dosen'] ?? null], 'lebih' => $le, 'mk' => $k['mk'] !== '' ? $k['mk'] : ($s['mata_kuliah'] ?? ''), 'kelas' => $k['kelas'] !== '' ? $k['kelas'] : ($s['kelas'] ?? ''), 'academia' => $a, 'sister' => $si, 'status' => $beda === [] ? 'cocok' : 'selisih', 'selisih' => $beda];
         }
         foreach ($sis as $i => $s) {

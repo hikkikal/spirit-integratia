@@ -119,6 +119,11 @@ final class SinkronAkademik
         $p = $this->q('SELECT label FROM periode WHERE id_smt = :s', ['s' => $smt])->fetch(\PDO::FETCH_ASSOC);
         $label = $p['label'] ?? $smt;
         $dosen = $this->q('SELECT DISTINCT d.id_dosen, d.nip FROM pengajaran p JOIN dosen d ON d.id_dosen = p.id_dosen WHERE p.id_smt = :s ORDER BY d.id_dosen', ['s' => $smt])->fetchAll(\PDO::FETCH_ASSOC);
+        $maks = (int) ($this->opsi['maks_dosen'] ?? 0);
+        if ($maks > 0 && count($dosen) > $maks) {
+            $dosen = array_slice($dosen, 0, $maks);
+            $this->log("Data akademik: uji coba, dibatasi $maks dosen pertama.");
+        }
         $this->log('Data akademik: ' . count($dosen) . " dosen pada periode $label.");
         if ($dosen === []) {
             $this->lewati($id, 13, 'Tidak ada dosen dengan pengajaran pada periode ini');
@@ -193,11 +198,29 @@ final class SinkronAkademik
         $m = microtime(true);
         $jadwal = [];
         $gagalJadwal = 0;
+        $unik = [];
+        foreach ($perDosen as $x) {
+            foreach ($x['kelas'] as $k) {
+                if ($k['id_kelas'] !== '') {
+                    $unik[$k['id_kelas']] = true;
+                }
+            }
+        }
+        $totalJadwal = count($unik);
+        $this->log("Data akademik: mengambil jadwal untuk $totalJadwal kelas…");
+        $mulaiJ = microtime(true);
+        $nJ = 0;
         foreach ($perDosen as $x) {
             foreach ($x['kelas'] as $k) {
                 if ($k['id_kelas'] === '' || isset($jadwal[$k['id_kelas']])) {
                     continue;
                 }
+                if ($nJ > 0 && $nJ % 25 === 0) {
+                    $dt = microtime(true) - $mulaiJ;
+                    $sisa = (int) round($dt / $nJ * ($totalJadwal - $nJ) / 60);
+                    $this->log(sprintf('Data akademik: jadwal %d dari %d kelas, %d menit berjalan, sisa sekitar %d menit.', $nJ, $totalJadwal, (int) round($dt / 60), $sisa));
+                }
+                $nJ++;
                 $r = Academia::ambilSemua($get, '/academia/public/rencana-jadwal', ['id_kelas_kuliah' => $k['id_kelas']], 100, 20);
                 $this->periksa($r['galat']);
                 if ($r['galat'] !== null) {
@@ -238,7 +261,7 @@ final class SinkronAkademik
                 $dId = $d['id_dosen'];
                 if (isset($perDosen[$dId])) {
                     $x = $perDosen[$dId];
-                    $susun = Academia::susunMinggu($x['kelas'], $jadwal, $x['sdm'], $kalender);
+                    $susun = Academia::susunMinggu($x['kelas'], $jadwal, $x['sdm'], $kalender, (string) ($d['nip'] ?? ''));
                     $cat = $susun['catatan'];
                     if ($x['kelas'] === []) {
                         $cat[] = 'Data akademik tidak memuat distribusi SKS untuk dosen ini pada periode ' . $label . '.';

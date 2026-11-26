@@ -15,11 +15,12 @@ use Illuminate\Support\Facades\DB;
  * Otomatis dijalankan sesudah sinkronisasi SISTER berhasil (tombol Sinkronisasi Data); perintah ini untuk mengulanginya saja:
  *   php artisan sinkron:akademik            periode terbaru yang belum terkunci
  *   php artisan sinkron:akademik 20252
+ *   php artisan sinkron:akademik 20251 --maks=5    uji coba, hanya 5 dosen pertama (jauh lebih cepat)
  * Kredensial di .env: ACADEMIA_TOKEN, atau ACADEMIA_CLIENT_CREDENTIALS=true + ACADEMIA_CLIENT_ID/SECRET (bawaan: OIDC_CLIENT_ID/SECRET).
  */
 class SinkronAkademikCommand extends Command
 {
-    protected $signature = 'sinkron:akademik {periode? : id semester, mis. 20252}';
+    protected $signature = 'sinkron:akademik {periode? : id semester, mis. 20252} {--maks=0 : uji coba: hanya N dosen pertama}';
     protected $description = 'Tarik data akademik (jadwal, pertemuan, kalender) semua dosen satu periode';
 
     public function handle(): int
@@ -29,14 +30,14 @@ class SinkronAkademikCommand extends Command
             $this->error('Periode tidak ditemukan, atau semua periode sudah dikunci.');
             return self::FAILURE;
         }
-        return self::tarik($this, null, $smt->id_smt) ? self::SUCCESS : self::FAILURE;
+        return self::tarik($this, null, $smt->id_smt, (int) $this->option('maks')) ? self::SUCCESS : self::FAILURE;
     }
 
     /**
      * Dipakai juga oleh SinkronSisterCommand. $idSinkron: baris sinkronisasi tempat endpoint 13-17 dicatat (null = hanya tampil di layar).
      * Tidak pernah melempar.
      */
-    public static function tarik(Command $cmd, ?string $idSinkron, string $smt): bool
+    public static function tarik(Command $cmd, ?string $idSinkron, string $smt, int $maksDosen = 0): bool
     {
         $cfg = config('academia');
         try {
@@ -56,7 +57,7 @@ class SinkronAkademikCommand extends Command
                 $cmd->line($m);
                 @file_put_contents(storage_path('logs/sinkron.log'), date('Y-m-d H:i:s') . ' [' . substr((string) $idSinkron, 0, 8) . '] ' . $m . PHP_EOL, FILE_APPEND | LOCK_EX);
             };
-            $r = (new SinkronAkademik(DB::connection()->getPdo(), fn (string $p, array $q) => $klien->get($p, $q), ['log' => $log]))->jalankan($smt, $idSinkron);
+            $r = (new SinkronAkademik(DB::connection()->getPdo(), fn (string $p, array $q) => $klien->get($p, $q), ['log' => $log, 'maks_dosen' => $maksDosen]))->jalankan($smt, $idSinkron);
             $cmd->{$r['ok'] ? 'info' : 'error'}($r['ok'] ? "Data akademik: {$r['tersimpan']} dari {$r['dosen']} dosen tersimpan ({$klien->panggilan} request)." : 'Data akademik gagal: ' . $r['pesan']);
             return $r['ok'];
         } catch (\Throwable $e) {
@@ -72,7 +73,7 @@ class SinkronAkademikCommand extends Command
      * Langkah terakhir tombol Sinkronisasi Data: honor semua dosen dihitung dari data terbaru. Perhitungan yang sudah terverifikasi
      * dan periode terkunci tidak disentuh (aturan HitungHonor). Tidak pernah melempar; hasilnya jadi baris endpoint 18.
      */
-    public static function hitungHonor(Command $cmd, string $idSinkron, string $smt): void
+    public static function hitungHonor(Command $cmd, ?string $idSinkron, string $smt): void
     {
         $mulai = microtime(true);
         $status = 'berhasil';
@@ -94,6 +95,9 @@ class SinkronAkademikCommand extends Command
             $status = 'gagal';
             $ket = 'Honor tidak dihitung: ' . mb_substr($e->getMessage(), 0, 250);
             $cmd->error($ket);
+        }
+        if ($idSinkron === null) {
+            return;   // dijalankan manual (honor:hitung): hanya tampil di layar
         }
         try {
             DB::insert('INSERT INTO sinkronisasi_endpoint (id_sinkron, no, nama, path, status, detik, rekord, keterangan) VALUES (?, ?, ?, ?, ?, ?, ?, ?)

@@ -406,7 +406,10 @@ final class SinkronSister
      * yang judulnya memuat nama mahasiswa ("Membimbing Skripsi (pembimbing utama) NAMA"). Dicocokkan lewat kategori (bila ada),
      * kata kunci (bila ada), dan nama mahasiswa. Tidak ada yang cocok, atau status yang cocok berbeda-beda: NULL (tidak ditebak).
      */
-    public static function statusBkd(array $bkd, ?string $kategori, array $namaMhs, ?string $kata, bool $ringkasan = false): ?string
+    /** id_katgiat BKD untuk kategori bimbingan akademik (PA). Di SISTER barisnya kadang memakai teks nm_kat/judul_keg kategori lain (mis. Magang). */
+    public const KATGIAT_PA = ['110601'];
+
+    public static function statusBkd(array $bkd, ?string $kategori, array $namaMhs, ?string $kata, bool $ringkasan = false, ?string $judulKegiatan = null): ?string
     {
         $norm = fn ($x) => mb_strtolower(trim(preg_replace('/\s+/', ' ', (string) $x)));
         $nama = array_filter(array_map($norm, $namaMhs), fn ($x) => $x !== '');
@@ -429,11 +432,28 @@ final class SinkronSister
                 }
             }
         }
+        if (! $stat && $ringkasan) {
+            // Bimbingan akademik: dikenali lewat id_katgiat (bukan teks), karena teks nm_kat/judul_keg pada baris itu bisa berasal dari kategori lain.
+            foreach ($bkd as $b) {
+                if (($b['unsur'] ?? 'ajar') === 'ajar' && ! empty($b['stat_kegiatan']) && in_array((string) ($b['id_katgiat'] ?? ''), self::KATGIAT_PA, true)) {
+                    $stat[(string) $b['stat_kegiatan']] = true;
+                }
+            }
+        }
         if (! $stat && $ringkasan && $kategori !== null && $kategori !== '') {
             // Bimbingan akademik: SISTER hanya memberi satu baris BKD per kategori, judulnya sama dengan nm_kat (tanpa nama mahasiswa).
             // Dicocokkan lewat kategori yang sama persis; bila statusnya berbeda-beda: NULL (tidak ditebak).
             foreach ($bkd as $b) {
                 if (($b['unsur'] ?? 'ajar') === 'ajar' && ! empty($b['stat_kegiatan']) && $norm($b['nm_kat'] ?? '') === $norm($kategori) && $norm($b['judul_keg'] ?? '') === $norm($kategori)) {
+                    $stat[(string) $b['stat_kegiatan']] = true;
+                }
+            }
+        }
+        if (! $stat && ! $ringkasan && $judulKegiatan !== null && trim($judulKegiatan) !== '' && $kategori !== null && $kategori !== '') {
+            // Cadangan: BKD kadang mencatat kegiatan tanpa nama mahasiswa (mis. "Laporan Magang"): judul_keg sama dengan judul kegiatan
+            // dan nm_kat sama dengan kategorinya. Dicocokkan lewat keduanya; bila statusnya berbeda-beda: NULL (tidak ditebak).
+            foreach ($bkd as $b) {
+                if (($b['unsur'] ?? 'ajar') === 'ajar' && ! empty($b['stat_kegiatan']) && $norm($b['nm_kat'] ?? '') === $norm($kategori) && $norm($b['judul_keg'] ?? '') === $norm($judulKegiatan)) {
                     $stat[(string) $b['stat_kegiatan']] = true;
                 }
             }
@@ -689,7 +709,7 @@ final class SinkronSister
                     if (! empty($b['id'])) {
                         $tambah('sister_bimbingan', $b['id'], (string) ($b['judul'] ?? ''), $b['jenis_bimbingan'] ?? null,
                             (string) ($b['nm_kat'] ?? 'Pembimbing'), self::teks($b['program_studi'] ?? null), self::teks($b['nama_perguruan_tinggi'] ?? null),
-                            self::statusBkd($d['bkd'][$dosen] ?? [], (string) ($b['nm_kat'] ?? ''), array_column($d['bimbDetail'][$b['id']]['mahasiswa'] ?? [], 'nama'), null, self::jenisKegiatan($b['jenis_bimbingan'] ?? null) === 'Pembimbing Akademik'),
+                            self::statusBkd($d['bkd'][$dosen] ?? [], (string) ($b['nm_kat'] ?? ''), array_column($d['bimbDetail'][$b['id']]['mahasiswa'] ?? [], 'nama'), null, self::jenisKegiatan($b['jenis_bimbingan'] ?? null) === 'Pembimbing Akademik', (string) ($b['judul'] ?? '')),
                             self::ringkasDetail($d['bimbDetail'][$b['id']] ?? null, $dosen));
                     }
                 }
