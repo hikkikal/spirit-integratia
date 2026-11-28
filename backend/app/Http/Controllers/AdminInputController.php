@@ -179,7 +179,7 @@ class AdminInputController extends Controller
     }
 
     /**
-     * Sesudah SISTER berhasil, proses yang sama masih menarik data akademik dan menghitung honor (endpoint 13-18).
+     * Sesudah SISTER berhasil, proses yang sama masih menarik data akademik dan menghitung honor (endpoint 14-18).
      * Dianggap masih berjalan selama endpoint 18 belum tercatat dan SISTER selesai belum lebih dari 30 menit lalu
      * (batas supaya proses yang mati di tengah tidak membuat tombol menunggu selamanya).
      */
@@ -191,11 +191,11 @@ class AdminInputController extends Controller
         return $x !== null;
     }
 
-    /** Menambah langkah 5 (data akademik, endpoint 13-17) dan 6 (hitung honor, endpoint 18) ke kemajuan SISTER yang sudah berhasil. */
+    /** Menambah langkah 5 (data akademik, endpoint 14-17) dan 6 (hitung honor, endpoint 18) ke kemajuan SISTER yang sudah berhasil. */
     private function denganPasca(array $k, array $ep, bool $berjalan): array
     {
         $per = fn (int $dari, int $sampai) => array_values(array_filter($ep, fn ($e) => $e->no >= $dari && $e->no <= $sampai));
-        $akad = $per(13, 17);
+        $akad = $per(14, 17);
         $hitung = $per(18, 18);
         if ($berjalan) {
             $akadSelesai = count($akad) >= 5;

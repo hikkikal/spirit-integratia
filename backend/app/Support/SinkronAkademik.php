@@ -3,19 +3,18 @@
 namespace App\Support;
 
 /**
- * Menarik data akademik (Personalia + Academia + AcademiaV2) untuk SEMUA dosen yang punya pengajaran pada satu periode,
+ * Menarik data akademik (Academia + AcademiaV2) untuk SEMUA dosen yang punya pengajaran pada satu periode,
  * lalu menyimpan hasil per dosen ke tabel academia_hasil (dilihat halaman Rincian Dosen tanpa memanggil API lagi).
  * Dijalankan sesudah sinkronisasi SISTER berhasil. Tidak pernah melempar, dan tidak pernah mengubah hasil sinkronisasi SISTER.
  * Penyimpanan atomik: bila gagal di tengah jalan, hasil lama tetap utuh.
  *
- * Alur: NIP -> id_sdm (Personalia) -> kelas dosen (distribusi-sks-dosen) -> id kelas (kelas-kuliah, per prodi) -> jadwal per kelas
+ * Alur: id dosen SISTER (= id_sdm Academia) -> kelas dosen (distribusi-sks-dosen) -> id kelas (kelas-kuliah, per prodi) -> jadwal per kelas
  *       (rencana-jadwal, sekali per kelas) -> kalender akademik (AcademiaV2) -> rincian per minggu (Academia::susunMinggu).
  */
 final class SinkronAkademik
 {
-    /** no => [nama, path]; melanjutkan penomoran endpoint SISTER (1-12). */
+    /** no => [nama, path]; melanjutkan penomoran endpoint SISTER (1-12); 13 (Personalia) sudah tidak dipakai. */
     public const ENDPOINT = [
-        13 => ['Pegawai (Personalia)', '/personalia/public/pegawai'],
         14 => ['Distribusi SKS Dosen (Academia)', '/academia/public/distribusi-sks-dosen'],
         15 => ['Kelas Kuliah (Academia)', '/academia/public/kelas-kuliah'],
         16 => ['Rencana Jadwal (Academia)', '/academia/public/rencana-jadwal'],
@@ -110,7 +109,7 @@ final class SinkronAkademik
             return;
         }
         if (in_array($galat['status'], [401, 403], true)) {
-            throw new AkademikGalat('Layanan akademik menolak token (HTTP ' . $galat['status'] . ' pada ' . $galat['path'] . '). Pastikan token atau layanan SSO memiliki scope publicacademia.read dan publicpersonalia.read.');
+            throw new AkademikGalat('Layanan akademik menolak token (HTTP ' . $galat['status'] . ' pada ' . $galat['path'] . '). Pastikan token atau layanan SSO memiliki scope publicacademia.read (dan publicpersonalia.read bila masih dipakai).');
         }
     }
 
@@ -126,27 +125,14 @@ final class SinkronAkademik
         }
         $this->log('Data akademik: ' . count($dosen) . " dosen pada periode $label.");
         if ($dosen === []) {
-            $this->lewati($id, 13, 'Tidak ada dosen dengan pengajaran pada periode ini');
+            $this->lewati($id, 14, 'Tidak ada dosen dengan pengajaran pada periode ini');
             return ['ok' => true, 'dosen' => 0, 'tersimpan' => 0, 'pesan' => null];
         }
         $get = $this->get;
         $contoh = [];
 
-        // 13) NIP -> id_sdm
-        $m = microtime(true);
-        $peg = Academia::ambilSemua($get, '/personalia/public/pegawai', ['kategori_pegawai' => 'pendidik'], 100, 100);
-        $this->periksa($peg['galat']);
-        if ($peg['galat'] !== null) {
-            throw new AkademikGalat('Daftar pegawai gagal diambil (HTTP ' . $peg['galat']['status'] . ').');
-        }
-        $sdm = [];
-        foreach ($peg['baris'] as $b) {
-            if (is_array($b) && ! empty($b['id_sdm']) && ! empty($b['nip'])) {
-                $sdm[Academia::norm((string) $b['nip'])] = (string) $b['id_sdm'];
-            }
-        }
-        $contoh['personalia'] = array_map(fn ($b) => ['id_sdm' => $b['id_sdm'] ?? null], array_slice($peg['baris'], 0, 2));
-        $this->selesaiEp($id, 13, $m, count($peg['baris']));
+        // Catatan: Personalia (NIP -> id_sdm) tidak dipakai lagi. id_sdm Academia sama dengan id dosen SISTER, jadi id SISTER dipakai langsung.
+        //         Nomor endpoint 13 sengaja dikosongkan supaya nomor 14-18 pada log lama tetap berarti sama.
 
         // 14) distribusi SKS per dosen
         $m = microtime(true);
@@ -154,11 +140,7 @@ final class SinkronAkademik
         $tanpaSdm = [];
         $dilewati = 0;
         foreach ($dosen as $d) {
-            $idSdm = $sdm[Academia::norm((string) ($d['nip'] ?? ''))] ?? null;
-            if (! $idSdm) {
-                $tanpaSdm[$d['id_dosen']] = trim((string) ($d['nip'] ?? '')) === '' ? 'Dosen ini belum memiliki NIP di SISTER, sehingga tidak dapat dicocokkan dengan data pegawai.' : 'NIP ' . $d['nip'] . ' tidak ditemukan di data pegawai PNJ.';
-                continue;
-            }
+            $idSdm = (string) $d['id_dosen'];
             $r = Academia::ambilSemua($get, '/academia/public/distribusi-sks-dosen', ['dosen' => $idSdm, 'id_tahun_akademik' => $smt], 100, 20);
             $this->periksa($r['galat']);
             if ($r['galat'] !== null) {

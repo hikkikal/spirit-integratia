@@ -34,7 +34,7 @@ class SinkronAkademikCommand extends Command
     }
 
     /**
-     * Dipakai juga oleh SinkronSisterCommand. $idSinkron: baris sinkronisasi tempat endpoint 13-17 dicatat (null = hanya tampil di layar).
+     * Dipakai juga oleh SinkronSisterCommand. $idSinkron: baris sinkronisasi tempat endpoint 14-17 dicatat (null = hanya tampil di layar).
      * Tidak pernah melempar.
      */
     public static function tarik(Command $cmd, ?string $idSinkron, string $smt, int $maksDosen = 0): bool
